@@ -50,3 +50,11 @@ pub async fn task_delete(
 ) -> Result<(), String> {
     db.delete_task(&task_id).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn task_list_all(
+    limit: Option<usize>,
+    db: State<'_, DbManager>,
+) -> Result<Vec<Task>, String> {
+    db.list_all_tasks(limit.unwrap_or(50)).map_err(|e| e.to_string())
+}

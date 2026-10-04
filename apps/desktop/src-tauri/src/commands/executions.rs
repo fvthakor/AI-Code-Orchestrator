@@ -38,6 +38,14 @@ pub async fn execution_run_agent(
     registry: State<'_, AgentRegistry>,
     process_mgr: State<'_, ProcessManager>,
 ) -> Result<String, String> {
+    // Sequential Execution Lock: Verify no agent task is currently running
+    if let Some(active) = process_mgr.get_active_agent_task() {
+        return Err(format!(
+            "Execution Locked: Agent task '{}' is currently running on project '{}'. Only one agent task can execute at a time.",
+            active.title, active.project_name
+        ));
+    }
+
     let task = db
         .get_task_by_id(&task_id)
         .map_err(|e| e.to_string())?
@@ -83,6 +91,18 @@ pub async fn execution_run_agent(
     let app_clone = app.clone();
     let event_name = format!("terminal-output:{}", exec_id);
 
+    // Track active task for single-task sequential lock
+    let task_info = crate::models::db::ActiveAgentTaskInfo {
+        execution_id: exec_id.clone(),
+        task_id: Some(task.id.clone()),
+        project_id: project.id.clone(),
+        project_name: project.name.clone(),
+        agent_id: agent_id.clone(),
+        title: task.title.clone(),
+        started_at: now_str.clone(),
+    };
+    process_mgr.set_active_agent_task(Some(task_info));
+
     let start_time = Instant::now();
     let db_clone = (*db).clone();
     let project_path_buf = project_dir.to_path_buf();
@@ -107,12 +127,16 @@ pub async fn execution_run_agent(
 
     // Spawn monitoring thread to finalize execution when process finishes
     let pm_clone = (*process_mgr).clone();
+    let pm_clone_release = (*process_mgr).clone();
     let session_id_clone = session_id.clone();
 
     std::thread::spawn(move || {
         while pm_clone.is_session_running(&session_id_clone) {
             std::thread::sleep(std::time::Duration::from_millis(500));
         }
+
+        // Release single-task sequential lock
+        pm_clone_release.set_active_agent_task(None);
 
         session_finished_clone.store(true, Ordering::SeqCst);
         let duration_ms = start_time.elapsed().as_millis() as i64;
@@ -232,4 +256,19 @@ pub async fn execution_run_command(
     });
 
     Ok(exec_id)
+}
+
+#[tauri::command]
+pub async fn execution_get_active_agent_task(
+    process_mgr: State<'_, ProcessManager>,
+) -> Result<Option<crate::models::db::ActiveAgentTaskInfo>, String> {
+    Ok(process_mgr.get_active_agent_task())
+}
+
+#[tauri::command]
+pub async fn execution_list_all(
+    limit: Option<usize>,
+    db: State<'_, DbManager>,
+) -> Result<Vec<Execution>, String> {
+    db.list_all_executions(limit.unwrap_or(50)).map_err(|e| e.to_string())
 }

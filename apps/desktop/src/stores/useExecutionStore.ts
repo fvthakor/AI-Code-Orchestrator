@@ -1,15 +1,19 @@
 import { create } from "zustand";
-import type { Execution } from "@ai-orchestrator/shared-types";
+import type { Execution, ActiveAgentTaskInfo } from "@ai-orchestrator/shared-types";
 import { IpcService } from "../services/ipc";
 
 interface ExecutionState {
   executions: Execution[];
+  allExecutions: Execution[];
   activeExecutionId: string | null;
+  activeAgentTask: ActiveAgentTaskInfo | null;
   terminalLogs: Record<string, string>;
   isLoading: boolean;
   error: string | null;
 
   loadExecutions: (projectId: string) => Promise<void>;
+  loadAllExecutions: (limit?: number) => Promise<void>;
+  loadActiveAgentTask: () => Promise<ActiveAgentTaskInfo | null>;
   runAgentTask: (taskId: string, agentId: string) => Promise<string | null>;
   runProjectCommand: (projectId: string, command: string) => Promise<string | null>;
   appendLog: (executionId: string, chunk: string) => void;
@@ -19,7 +23,9 @@ interface ExecutionState {
 
 export const useExecutionStore = create<ExecutionState>((set, get) => ({
   executions: [],
+  allExecutions: [],
   activeExecutionId: null,
+  activeAgentTask: null,
   terminalLogs: {},
   isLoading: false,
   error: null,
@@ -34,11 +40,40 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
     }
   },
 
+  loadAllExecutions: async (limit = 50) => {
+    try {
+      const allExecutions = await IpcService.executionListAll(limit);
+      set({ allExecutions });
+    } catch {
+      // ignore
+    }
+  },
+
+  loadActiveAgentTask: async () => {
+    try {
+      const activeAgentTask = await IpcService.executionGetActiveAgentTask();
+      set({ activeAgentTask });
+      return activeAgentTask;
+    } catch {
+      return null;
+    }
+  },
+
   runAgentTask: async (taskId: string, agentId: string) => {
     try {
       set({ isLoading: true, error: null });
+
+      // Enforce sequential execution lock
+      const currentActive = await get().loadActiveAgentTask();
+      if (currentActive) {
+        const lockMsg = `Task execution locked: '${currentActive.title}' is currently running on '${currentActive.projectName}'. Only one agent task can execute at a time.`;
+        set({ error: lockMsg, isLoading: false });
+        return null;
+      }
+
       const executionId = await IpcService.executionRunAgent(taskId, agentId);
       set({ activeExecutionId: executionId, isLoading: false });
+      await get().loadActiveAgentTask();
 
       // Subscribe to live output
       await IpcService.onTerminalOutput(executionId, (output) => {

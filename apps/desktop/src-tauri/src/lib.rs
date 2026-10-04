@@ -17,14 +17,14 @@ use execution::process_manager::ProcessManager;
 use agents::registry::AgentRegistry;
 use security::policy::PolicyEngine;
 
-use commands::projects::{project_open, project_analyze, project_list, project_delete};
+use commands::projects::{project_open, project_analyze, project_list, project_delete, stats_get_global};
 use commands::agents::{agent_detect_all, agent_save_config, agent_test_connection};
-use commands::tasks::{task_create, task_list, task_get, task_update_status, task_delete};
-use commands::executions::{execution_list, execution_get, execution_run_agent, execution_run_command};
+use commands::tasks::{task_create, task_list, task_list_all, task_get, task_update_status, task_delete};
+use commands::executions::{execution_list, execution_list_all, execution_get, execution_get_active_agent_task, execution_run_agent, execution_run_command};
 use commands::terminal::{terminal_spawn, terminal_write, terminal_resize, terminal_kill};
 use commands::git::{git_status, git_diff, git_log, git_commit, git_init_or_link, git_create_branch, git_push, git_create_pr};
 use commands::security::security_evaluate;
-use commands::team::{team_start_workflow, team_get_workflow, team_list_workflows, team_list_workflow_steps, team_add_step, team_advance_step, team_retry_step, team_trigger_fallback};
+use commands::team::{team_start_workflow, team_get_workflow, team_list_workflows, team_list_all_workflows, team_list_workflow_steps, team_add_step, team_advance_step, team_retry_step, team_trigger_fallback};
 
 #[tauri::command]
 fn ping() -> &'static str {
@@ -51,11 +51,12 @@ pub fn run() {
         .manage(policy_engine)
         .invoke_handler(tauri::generate_handler![
             ping,
-            // Projects
+            // Projects & Stats
             project_open,
             project_analyze,
             project_list,
             project_delete,
+            stats_get_global,
             // Agents
             agent_detect_all,
             agent_save_config,
@@ -63,12 +64,15 @@ pub fn run() {
             // Tasks
             task_create,
             task_list,
+            task_list_all,
             task_get,
             task_update_status,
             task_delete,
             // Executions
             execution_list,
+            execution_list_all,
             execution_get,
+            execution_get_active_agent_task,
             execution_run_agent,
             execution_run_command,
             // Terminal
@@ -91,6 +95,7 @@ pub fn run() {
             team_start_workflow,
             team_get_workflow,
             team_list_workflows,
+            team_list_all_workflows,
             team_list_workflow_steps,
             team_add_step,
             team_advance_step,

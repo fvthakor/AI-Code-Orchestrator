@@ -9,11 +9,13 @@ use uuid::Uuid;
 
 use super::job_object::WinJobObject;
 use super::pty_session::PtySession;
+use crate::models::db::ActiveAgentTaskInfo;
 
 #[derive(Clone)]
 pub struct ProcessManager {
     sessions: Arc<Mutex<HashMap<String, Arc<PtySession>>>>,
     job_object: Arc<Option<WinJobObject>>,
+    active_agent_task: Arc<Mutex<Option<ActiveAgentTaskInfo>>>,
 }
 
 impl ProcessManager {
@@ -21,6 +23,7 @@ impl ProcessManager {
         Self {
             sessions: Arc::new(Mutex::new(HashMap::new())),
             job_object: Arc::new(WinJobObject::new()),
+            active_agent_task: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -161,6 +164,15 @@ impl ProcessManager {
     pub fn active_sessions(&self) -> Vec<String> {
         let map = self.sessions.lock().unwrap();
         map.keys().cloned().collect()
+    }
+
+    pub fn get_active_agent_task(&self) -> Option<ActiveAgentTaskInfo> {
+        self.active_agent_task.lock().unwrap().clone()
+    }
+
+    pub fn set_active_agent_task(&self, task: Option<ActiveAgentTaskInfo>) {
+        let mut lock = self.active_agent_task.lock().unwrap();
+        *lock = task;
     }
 }
 

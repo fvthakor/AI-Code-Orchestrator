@@ -115,3 +115,10 @@ pub async fn team_trigger_fallback(
 ) -> Result<TeamWorkflowStep, String> {
     TeamCoordinator::trigger_fallback(&db, &workflow_id, &step_id)
 }
+
+#[tauri::command]
+pub async fn team_list_all_workflows(
+    db: State<'_, DbManager>,
+) -> Result<Vec<TeamWorkflow>, String> {
+    db.list_all_team_workflows().map_err(|e| e.to_string())
+}

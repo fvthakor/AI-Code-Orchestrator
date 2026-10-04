@@ -4,11 +4,13 @@ import { IpcService } from "../services/ipc";
 
 interface TaskState {
   tasks: Task[];
+  allTasks: Task[];
   activeTaskId: string | null;
   isLoading: boolean;
   error: string | null;
 
   loadTasks: (projectId: string) => Promise<void>;
+  loadAllTasks: (limit?: number) => Promise<void>;
   createTask: (
     projectId: string,
     title: string,
@@ -23,6 +25,7 @@ interface TaskState {
 
 export const useTaskStore = create<TaskState>((set) => ({
   tasks: [],
+  allTasks: [],
   activeTaskId: null,
   isLoading: false,
   error: null,
@@ -34,6 +37,15 @@ export const useTaskStore = create<TaskState>((set) => ({
       set({ tasks, isLoading: false });
     } catch (err: unknown) {
       set({ error: String(err), isLoading: false });
+    }
+  },
+
+  loadAllTasks: async (limit = 50) => {
+    try {
+      const allTasks = await IpcService.taskListAll(limit);
+      set({ allTasks });
+    } catch {
+      // ignore
     }
   },
 

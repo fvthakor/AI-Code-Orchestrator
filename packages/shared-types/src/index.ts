@@ -215,3 +215,24 @@ export interface GitHubPrResult {
   method: 'api' | 'cli' | 'web';
   isWebFallback: boolean;
 }
+
+export interface ActiveAgentTaskInfo {
+  executionId: string;
+  taskId?: string;
+  projectId: string;
+  projectName: string;
+  agentId: string;
+  title: string;
+  startedAt: string;
+}
+
+export interface GlobalStats {
+  totalProjects: number;
+  totalTasks: number;
+  completedTasks: number;
+  totalExecutions: number;
+  totalWorkflows: number;
+  completedWorkflows: number;
+  totalPrs: number;
+  activeTask?: ActiveAgentTaskInfo;
+}

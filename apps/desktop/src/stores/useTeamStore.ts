@@ -59,23 +59,45 @@ interface TeamState {
   setAgentAtRoleIndex: (role: 'plan_manager' | 'developer' | 'tester', index: number, agentId: string) => void;
 }
 
+const DEFAULT_GLOBAL_TEAM_CONFIG: TeamConfig = {
+  planManagerAgents: ["claude", "antigravity"],
+  developerAgents: ["codex", "claude"],
+  testerAgents: ["antigravity", "codex"],
+  planManagerAgentId: "claude",
+  planManagerFallbackAgentId: "antigravity",
+  developerAgentId: "codex",
+  developerFallbackAgentId: "claude",
+  testerAgentId: "antigravity",
+  testerFallbackAgentId: "codex",
+  maxRetries: 3,
+  autoPr: true,
+};
+
+function loadStoredTeamConfig(): TeamConfig {
+  try {
+    const raw = localStorage.getItem("orchestrator_global_team_config");
+    if (raw) {
+      return { ...DEFAULT_GLOBAL_TEAM_CONFIG, ...JSON.parse(raw) };
+    }
+  } catch {
+    // fallback
+  }
+  return DEFAULT_GLOBAL_TEAM_CONFIG;
+}
+
+function persistTeamConfig(config: TeamConfig) {
+  try {
+    localStorage.setItem("orchestrator_global_team_config", JSON.stringify(config));
+  } catch {
+    // ignore
+  }
+}
+
 export const useTeamStore = create<TeamState>((set, get) => ({
   workflows: [],
   activeWorkflow: null,
   steps: [],
-  config: {
-    planManagerAgents: ["claude", "antigravity"],
-    developerAgents: ["codex", "claude"],
-    testerAgents: ["antigravity", "codex"],
-    planManagerAgentId: "claude",
-    planManagerFallbackAgentId: "antigravity",
-    developerAgentId: "codex",
-    developerFallbackAgentId: "claude",
-    testerAgentId: "antigravity",
-    testerFallbackAgentId: "codex",
-    maxRetries: 3,
-    autoPr: true,
-  },
+  config: loadStoredTeamConfig(),
   isLoading: false,
   error: null,
   prResult: null,
@@ -266,7 +288,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   setConfig: (partial) => {
-    set((state) => ({ config: { ...state.config, ...partial } }));
+    set((state) => {
+      const updated = { ...state.config, ...partial };
+      persistTeamConfig(updated);
+      return { config: updated };
+    });
   },
 
   setPrModalOpen: (open) => set({ isPrModalOpen: open }),
@@ -279,14 +305,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       const updated = [...current, agentId];
       const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
       const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
-      return {
-        config: {
-          ...state.config,
-          [field]: updated,
-          [primaryKey]: updated[0] || "",
-          [fallbackKey]: updated[1] || undefined,
-        },
+      const newConfig = {
+        ...state.config,
+        [field]: updated,
+        [primaryKey]: updated[0] || "",
+        [fallbackKey]: updated[1] || undefined,
       };
+      persistTeamConfig(newConfig);
+      return { config: newConfig };
     });
   },
 
@@ -297,14 +323,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       const updated = current.filter((_, i) => i !== index);
       const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
       const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
-      return {
-        config: {
-          ...state.config,
-          [field]: updated,
-          [primaryKey]: updated[0] || "",
-          [fallbackKey]: updated[1] || undefined,
-        },
+      const newConfig = {
+        ...state.config,
+        [field]: updated,
+        [primaryKey]: updated[0] || "",
+        [fallbackKey]: updated[1] || undefined,
       };
+      persistTeamConfig(newConfig);
+      return { config: newConfig };
     });
   },
 
@@ -317,14 +343,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       current.splice(toIndex, 0, moved);
       const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
       const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
-      return {
-        config: {
-          ...state.config,
-          [field]: current,
-          [primaryKey]: current[0] || "",
-          [fallbackKey]: current[1] || undefined,
-        },
+      const newConfig = {
+        ...state.config,
+        [field]: current,
+        [primaryKey]: current[0] || "",
+        [fallbackKey]: current[1] || undefined,
       };
+      persistTeamConfig(newConfig);
+      return { config: newConfig };
     });
   },
 
@@ -337,14 +363,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       }
       const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
       const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
-      return {
-        config: {
-          ...state.config,
-          [field]: current,
-          [primaryKey]: current[0] || "",
-          [fallbackKey]: current[1] || undefined,
-        },
+      const newConfig = {
+        ...state.config,
+        [field]: current,
+        [primaryKey]: current[0] || "",
+        [fallbackKey]: current[1] || undefined,
       };
+      persistTeamConfig(newConfig);
+      return { config: newConfig };
     });
   },
 }));

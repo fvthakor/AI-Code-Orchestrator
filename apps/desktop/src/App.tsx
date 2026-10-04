@@ -50,7 +50,12 @@ export default function App() {
           />
         );
       case "projects":
-        return <ProjectsPage onNavigate={setCurrentPage} />;
+        return (
+          <ProjectsPage
+            onNavigate={setCurrentPage}
+            onOpenNewTask={() => setIsNewTaskOpen(true)}
+          />
+        );
       case "tasks":
         return <TasksPage onOpenNewTask={() => setIsNewTaskOpen(true)} />;
       case "agents":

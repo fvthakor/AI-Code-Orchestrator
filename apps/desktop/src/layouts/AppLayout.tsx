@@ -56,9 +56,9 @@ export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps)
   const readyAgentsCount = agents.filter((a) => a.status === "connected" && a.enabled).length;
 
   const navItems: { id: NavPage; label: string; icon: React.ReactNode }[] = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: "dashboard", label: "Global Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: "projects", label: "Project Dashboard", icon: <FolderOpen className="w-4 h-4" /> },
     { id: "team", label: "Autonomous Team", icon: <Users className="w-4 h-4 text-indigo-400" /> },
-    { id: "projects", label: "Projects", icon: <FolderOpen className="w-4 h-4" /> },
     { id: "tasks", label: "Tasks", icon: <CheckSquare className="w-4 h-4" /> },
     { id: "agents", label: "AI Agents", icon: <Bot className="w-4 h-4" /> },
     { id: "changes", label: "Git & Changes", icon: <GitBranch className="w-4 h-4" /> },

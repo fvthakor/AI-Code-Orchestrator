@@ -179,3 +179,28 @@ pub struct GitHubPrResult {
     pub method: String,
     pub is_web_fallback: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveAgentTaskInfo {
+    pub execution_id: String,
+    pub task_id: Option<String>,
+    pub project_id: String,
+    pub project_name: String,
+    pub agent_id: String,
+    pub title: String,
+    pub started_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalStats {
+    pub total_projects: usize,
+    pub total_tasks: usize,
+    pub completed_tasks: usize,
+    pub total_executions: usize,
+    pub total_workflows: usize,
+    pub completed_workflows: usize,
+    pub total_prs: usize,
+    pub active_task: Option<ActiveAgentTaskInfo>,
+}

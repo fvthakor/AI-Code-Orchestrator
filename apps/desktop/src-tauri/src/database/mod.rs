@@ -224,6 +224,32 @@ impl DbManager {
         Ok(())
     }
 
+    pub fn list_all_tasks(&self, limit: usize) -> Result<Vec<Task>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, project_id, title, description, status, agent_id, created_at, started_at, completed_at FROM tasks ORDER BY created_at DESC LIMIT ?1"
+        )?;
+        let rows = stmt.query_map(params![limit as i64], |row| {
+            Ok(Task {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                title: row.get(2)?,
+                description: row.get(3)?,
+                status: row.get(4)?,
+                agent_id: row.get(5)?,
+                created_at: row.get(6)?,
+                started_at: row.get(7)?,
+                completed_at: row.get(8)?,
+            })
+        })?;
+
+        let mut tasks = Vec::new();
+        for t in rows {
+            tasks.push(t?);
+        }
+        Ok(tasks)
+    }
+
     // --- Executions ---
     pub fn create_execution(&self, e: NewExecution) -> Result<Execution> {
         let conn = self.conn.lock().unwrap();
@@ -304,6 +330,35 @@ impl DbManager {
             "SELECT id, task_id, project_id, agent_id, command, status, exit_code, duration_ms, files_changed_json, git_diff, started_at, completed_at FROM executions WHERE project_id = ?1 ORDER BY started_at DESC"
         )?;
         let rows = stmt.query_map(params![project_id], |row| {
+            Ok(Execution {
+                id: row.get(0)?,
+                task_id: row.get(1)?,
+                project_id: row.get(2)?,
+                agent_id: row.get(3)?,
+                command: row.get(4)?,
+                status: row.get(5)?,
+                exit_code: row.get(6)?,
+                duration_ms: row.get(7)?,
+                files_changed_json: row.get(8)?,
+                git_diff: row.get(9)?,
+                started_at: row.get(10)?,
+                completed_at: row.get(11)?,
+            })
+        })?;
+
+        let mut execs = Vec::new();
+        for e in rows {
+            execs.push(e?);
+        }
+        Ok(execs)
+    }
+
+    pub fn list_all_executions(&self, limit: usize) -> Result<Vec<Execution>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, task_id, project_id, agent_id, command, status, exit_code, duration_ms, files_changed_json, git_diff, started_at, completed_at FROM executions ORDER BY started_at DESC LIMIT ?1"
+        )?;
+        let rows = stmt.query_map(params![limit as i64], |row| {
             Ok(Execution {
                 id: row.get(0)?,
                 task_id: row.get(1)?,
@@ -492,6 +547,43 @@ impl DbManager {
             "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, plan_manager_fallback, developer_agent_id, developer_fallback, tester_agent_id, tester_fallback, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows WHERE project_id = ?1 ORDER BY created_at DESC"
         )?;
         let rows = stmt.query_map(params![project_id], |row| {
+            let is_greenfield_int: i32 = row.get(4)?;
+            Ok(TeamWorkflow {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                title: row.get(2)?,
+                goal: row.get(3)?,
+                is_greenfield: is_greenfield_int != 0,
+                phase: row.get(5)?,
+                plan_manager_agent_id: row.get(6)?,
+                plan_manager_fallback: row.get(7)?,
+                developer_agent_id: row.get(8)?,
+                developer_fallback: row.get(9)?,
+                tester_agent_id: row.get(10)?,
+                tester_fallback: row.get(11)?,
+                branch_name: row.get(12)?,
+                pr_url: row.get(13)?,
+                pr_method: row.get(14)?,
+                current_step_index: row.get(15)?,
+                created_at: row.get(16)?,
+                updated_at: row.get(17)?,
+                completed_at: row.get(18)?,
+            })
+        })?;
+
+        let mut list = Vec::new();
+        for item in rows {
+            list.push(item?);
+        }
+        Ok(list)
+    }
+
+    pub fn list_all_team_workflows(&self) -> Result<Vec<TeamWorkflow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, plan_manager_fallback, developer_agent_id, developer_fallback, tester_agent_id, tester_fallback, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows ORDER BY created_at DESC"
+        )?;
+        let rows = stmt.query_map([], |row| {
             let is_greenfield_int: i32 = row.get(4)?;
             Ok(TeamWorkflow {
                 id: row.get(0)?,

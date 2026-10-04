@@ -13,6 +13,8 @@ import type {
   TeamWorkflowStep,
   GitHubPrRequest,
   GitHubPrResult,
+  ActiveAgentTaskInfo,
+  GlobalStats,
 } from "@ai-orchestrator/shared-types";
 
 export interface GitCommitInfo {
@@ -95,6 +97,10 @@ export const IpcService = {
     return await invoke<Task[]>("task_list", { projectId });
   },
 
+  async taskListAll(limit = 50): Promise<Task[]> {
+    return await invoke<Task[]>("task_list_all", { limit });
+  },
+
   async taskGet(taskId: string): Promise<Task | null> {
     return await invoke<Task | null>("task_get", { taskId });
   },
@@ -112,8 +118,16 @@ export const IpcService = {
     return await invoke<Execution[]>("execution_list", { projectId });
   },
 
+  async executionListAll(limit = 50): Promise<Execution[]> {
+    return await invoke<Execution[]>("execution_list_all", { limit });
+  },
+
   async executionGet(executionId: string): Promise<Execution | null> {
     return await invoke<Execution | null>("execution_get", { executionId });
+  },
+
+  async executionGetActiveAgentTask(): Promise<ActiveAgentTaskInfo | null> {
+    return await invoke<ActiveAgentTaskInfo | null>("execution_get_active_agent_task");
   },
 
   async executionRunAgent(taskId: string, agentId: string): Promise<string> {
@@ -241,6 +255,15 @@ export const IpcService = {
 
   async teamTriggerFallback(workflowId: string, stepId: string): Promise<TeamWorkflowStep> {
     return await invoke<TeamWorkflowStep>("team_trigger_fallback", { workflowId, stepId });
+  },
+
+  async teamListAllWorkflows(): Promise<TeamWorkflow[]> {
+    return await invoke<TeamWorkflow[]>("team_list_all_workflows");
+  },
+
+  // Global Statistics
+  async statsGetGlobal(): Promise<GlobalStats> {
+    return await invoke<GlobalStats>("stats_get_global");
   },
 
   // Security

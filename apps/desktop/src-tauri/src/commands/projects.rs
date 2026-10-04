@@ -1,10 +1,11 @@
 use std::path::Path;
 use tauri::State;
 use crate::database::DbManager;
+use crate::execution::process_manager::ProcessManager;
 use crate::filesystem::path_guard::PathGuard;
 use crate::filesystem::scanner::ProjectScanner;
 use crate::git::cli::GitService;
-use crate::models::db::{NewProject, Project};
+use crate::models::db::{NewProject, Project, GlobalStats};
 use crate::project::context::ProjectContext;
 
 #[tauri::command]
@@ -119,4 +120,35 @@ pub async fn project_list(db: State<'_, DbManager>) -> Result<Vec<ProjectContext
 #[tauri::command]
 pub async fn project_delete(project_id: String, db: State<'_, DbManager>) -> Result<(), String> {
     db.delete_project(&project_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn stats_get_global(
+    db: State<'_, DbManager>,
+    process_mgr: State<'_, ProcessManager>,
+) -> Result<GlobalStats, String> {
+    let projects = db.list_projects().map_err(|e| e.to_string())?;
+    let all_tasks = db.list_all_tasks(1000).map_err(|e| e.to_string())?;
+    let all_executions = db.list_all_executions(1000).map_err(|e| e.to_string())?;
+    let all_workflows = db.list_all_team_workflows().map_err(|e| e.to_string())?;
+
+    let total_projects = projects.len();
+    let total_tasks = all_tasks.len();
+    let completed_tasks = all_tasks.iter().filter(|t| t.status == "completed").count();
+    let total_executions = all_executions.len();
+    let total_workflows = all_workflows.len();
+    let completed_workflows = all_workflows.iter().filter(|w| w.phase == "completed" || w.phase == "reviewing").count();
+    let total_prs = all_workflows.iter().filter(|w| w.pr_url.is_some()).count();
+    let active_task = process_mgr.get_active_agent_task();
+
+    Ok(GlobalStats {
+        total_projects,
+        total_tasks,
+        completed_tasks,
+        total_executions,
+        total_workflows,
+        completed_workflows,
+        total_prs,
+        active_task,
+    })
 }
