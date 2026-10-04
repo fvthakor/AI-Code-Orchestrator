@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   FolderGit2,
   Heart,
+  Coffee,
 } from "lucide-react";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useTerminalStore } from "../stores/useTerminalStore";
@@ -225,6 +226,18 @@ export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps)
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Guarded</span>
             </div>
+
+            {/* Buy Me a Coffee Button */}
+            <a
+              href="https://www.buymeacoffee.com/fvthakor"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 hover:bg-amber-500/20 hover:border-amber-500/40 transition select-none cursor-pointer"
+              title="Support creator on Buy Me a Coffee"
+            >
+              <Coffee className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-medium hidden md:inline">Buy Coffee</span>
+            </a>
 
             {/* Sponsor Button */}
             <a

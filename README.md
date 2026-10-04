@@ -1,5 +1,6 @@
 # AI Code Orchestrator — Windows V1
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-%E2%98%95-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/fvthakor)
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=github-sponsors&logoColor=white)](https://github.com/sponsors/fvthakor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Platform: Windows x64](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0078D6?logo=windows)](https://microsoft.com)
@@ -123,13 +124,27 @@ Detailed architectural and technical guides can be found in the [`docs/`](./docs
 
 ---
 
-## Sponsorship & Support
+## 💖 Support & Sponsorship
 
-If you find AI Code Orchestrator useful for managing your local AI coding agents, consider supporting its development:
+If **AI Code Orchestrator** helps streamline your workflow, saves you hours of development, or helps you coordinate AI agents effortlessly on Windows, please consider supporting the project!
 
-- **GitHub Sponsors**: [sponsor @fvthakor](https://github.com/sponsors/fvthakor)
+Your contributions directly help:
+- 🚀 **Build New AI Agent Adapters** (Gemini Code Assist, Cursor CLI, Aider, Devin, Roo Code)
+- ⚡ **Enhance ConPTY Terminal Streaming** & Windows process lifecycle performance
+- 🛡️ **Expand Enterprise Sandbox & Security Policies**
+- 🛠️ **Deliver Fast Bug Fixes, Documentation & Continuous Updates**
 
-Every contribution helps keep this project actively maintained and updated with new AI agent adapters.
+<div align="center">
+
+### ☕ Support via Buy Me a Coffee
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-☕%20Support-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/fvthakor)
+
+### ❤️ Sponsor via GitHub Sponsors
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor%20on%20GitHub-❤️%20Sponsor-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/fvthakor)
+
+*Every coffee or sponsorship fuels open-source innovation and keeps this project actively maintained. Thank you for your support!*
+
+</div>
 
 ---
 

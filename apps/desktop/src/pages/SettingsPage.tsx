@@ -4,6 +4,7 @@ import {
   Terminal,
   FolderLock,
   Heart,
+  Coffee,
 } from "lucide-react";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { Input } from "../components/ui/Input";
@@ -145,25 +146,36 @@ export function SettingsPage() {
         {/* Sponsorship & Community Support */}
         <Card className="border-pink-500/20 bg-pink-500/[0.03]">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold flex items-center justify-between text-slate-200">
+            <CardTitle className="text-sm font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-slate-200">
               <span className="flex items-center space-x-2">
                 <Heart className="w-4 h-4 text-pink-400 fill-pink-400/20" />
                 <span>Support & Sponsorship</span>
               </span>
-              <a
-                href="https://github.com/sponsors/fvthakor"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-pink-600 text-white font-medium text-xs hover:bg-pink-500 transition shadow-sm select-none"
-              >
-                <Heart className="w-3.5 h-3.5 fill-current" />
-                <span>Sponsor on GitHub</span>
-              </a>
+              <div className="flex items-center space-x-2.5">
+                <a
+                  href="https://www.buymeacoffee.com/fvthakor"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition shadow-sm select-none"
+                >
+                  <Coffee className="w-3.5 h-3.5 fill-current" />
+                  <span>Buy Me a Coffee</span>
+                </a>
+                <a
+                  href="https://github.com/sponsors/fvthakor"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-medium text-xs transition shadow-sm select-none"
+                >
+                  <Heart className="w-3.5 h-3.5 fill-current" />
+                  <span>GitHub Sponsors</span>
+                </a>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-xs text-slate-400 leading-relaxed">
-              AI Code Orchestrator is open-source and free for developers. If this tool saves you time or boosts your workflow, consider sponsoring the project on GitHub to support active development, bug fixes, and new AI agent adapters.
+              AI Code Orchestrator is free, open-source software built for developers. If this project helps streamline your workflow, saves you hours of development, or keeps your AI coding agents organized on Windows, consider supporting development via Buy Me a Coffee or GitHub Sponsors. Every contribution is deeply appreciated!
             </p>
           </CardContent>
         </Card>
