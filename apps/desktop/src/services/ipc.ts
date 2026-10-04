@@ -191,6 +191,22 @@ export const IpcService = {
     return await invoke<void>("git_create_branch", { projectId, branchName });
   },
 
+  async gitPrepareTaskBranch(
+    projectId: string,
+    taskSlug: string,
+    baseBranch?: string
+  ): Promise<string> {
+    return await invoke<string>("git_prepare_task_branch", { projectId, taskSlug, baseBranch });
+  },
+
+  async gitCommitAndPush(
+    projectId: string,
+    branchName: string,
+    message: string
+  ): Promise<string> {
+    return await invoke<string>("git_commit_and_push", { projectId, branchName, message });
+  },
+
   async gitPush(projectId: string, branchName: string): Promise<string> {
     return await invoke<string>("git_push", { projectId, branchName });
   },

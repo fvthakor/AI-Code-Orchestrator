@@ -74,6 +74,82 @@ impl GitHubService {
         Self::run_git_cmd(repo_dir, &["push", "-u", "origin", branch_name])
     }
 
+    /// Prepares task branch: pulls base branch from remote if available, then checkouts task branch.
+    pub fn prepare_task_branch(
+        repo_dir: &Path,
+        task_slug: &str,
+        base_branch: Option<&str>,
+    ) -> Result<String, String> {
+        if !repo_dir.join(".git").exists() {
+            return Ok("".to_string());
+        }
+
+        // Determine base branch: default to "master" or "main"
+        let base = if let Some(b) = base_branch {
+            b.to_string()
+        } else {
+            // Check if main exists, else master
+            if Self::run_git_cmd(repo_dir, &["rev-parse", "--verify", "main"]).is_ok() {
+                "main".to_string()
+            } else if Self::run_git_cmd(repo_dir, &["rev-parse", "--verify", "master"]).is_ok() {
+                "master".to_string()
+            } else {
+                "master".to_string()
+            }
+        };
+
+        // Try checkout base
+        let _ = Self::run_git_cmd(repo_dir, &["checkout", &base]);
+
+        // Try pull from origin (swallow error if offline or no remote)
+        let _ = Self::run_git_cmd(repo_dir, &["pull", "origin", &base]);
+
+        // Clean task slug
+        let sanitized = task_slug
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+            .collect::<String>()
+            .to_lowercase();
+        let branch_name = if sanitized.starts_with("feat/") {
+            sanitized
+        } else {
+            format!("feat/{}", sanitized.trim_matches('-'))
+        };
+
+        Self::checkout_branch(repo_dir, &branch_name)?;
+        Ok(branch_name)
+    }
+
+    /// Stages all changes, commits, and pushes branch to origin.
+    pub fn commit_and_push(
+        repo_dir: &Path,
+        branch_name: &str,
+        commit_message: &str,
+    ) -> Result<String, String> {
+        if !repo_dir.join(".git").exists() {
+            return Ok("Not a git repository".to_string());
+        }
+
+        // git add -A
+        Self::run_git_cmd(repo_dir, &["add", "-A"])?;
+
+        // check status
+        let status = Self::run_git_cmd(repo_dir, &["status", "--porcelain"])?;
+        if status.trim().is_empty() {
+            return Ok("No changes to commit".to_string());
+        }
+
+        // git commit -m <msg>
+        Self::run_git_cmd(repo_dir, &["commit", "-m", commit_message])?;
+
+        // git push -u origin <branch> (ignore failure if offline or no remote)
+        let push_res = Self::push_branch(repo_dir, branch_name);
+        match push_res {
+            Ok(msg) => Ok(format!("Committed and pushed to origin/{}: {}", branch_name, msg)),
+            Err(err) => Ok(format!("Committed locally (push skipped: {})", err)),
+        }
+    }
+
     /// Parses owner and repository name from GitHub URLs (HTTPS or SSH).
     pub fn parse_github_repo(remote_url: &str) -> Option<(String, String)> {
         let clean = remote_url.trim().trim_end_matches(".git");

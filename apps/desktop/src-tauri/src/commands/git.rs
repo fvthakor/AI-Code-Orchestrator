@@ -133,3 +133,41 @@ pub async fn git_create_pr(
     )
 }
 
+#[tauri::command]
+pub async fn git_prepare_task_branch(
+    project_id: String,
+    task_slug: String,
+    base_branch: Option<String>,
+    db: State<'_, DbManager>,
+) -> Result<String, String> {
+    let p = db
+        .get_project_by_id(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Project '{}' not found", project_id))?;
+
+    crate::git::github::GitHubService::prepare_task_branch(
+        Path::new(&p.path),
+        &task_slug,
+        base_branch.as_deref(),
+    )
+}
+
+#[tauri::command]
+pub async fn git_commit_and_push(
+    project_id: String,
+    branch_name: String,
+    message: String,
+    db: State<'_, DbManager>,
+) -> Result<String, String> {
+    let p = db
+        .get_project_by_id(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Project '{}' not found", project_id))?;
+
+    crate::git::github::GitHubService::commit_and_push(
+        Path::new(&p.path),
+        &branch_name,
+        &message,
+    )
+}
+

@@ -22,7 +22,7 @@ use commands::agents::{agent_detect_all, agent_save_config, agent_test_connectio
 use commands::tasks::{task_create, task_list, task_list_all, task_get, task_update_status, task_delete};
 use commands::executions::{execution_list, execution_list_all, execution_get, execution_get_active_agent_task, execution_run_agent, execution_run_command};
 use commands::terminal::{terminal_spawn, terminal_write, terminal_resize, terminal_kill};
-use commands::git::{git_status, git_diff, git_log, git_commit, git_init_or_link, git_create_branch, git_push, git_create_pr};
+use commands::git::{git_status, git_diff, git_log, git_commit, git_init_or_link, git_create_branch, git_push, git_create_pr, git_prepare_task_branch, git_commit_and_push};
 use commands::security::security_evaluate;
 use commands::team::{team_start_workflow, team_get_workflow, team_list_workflows, team_list_all_workflows, team_list_workflow_steps, team_add_step, team_advance_step, team_retry_step, team_trigger_fallback};
 
@@ -89,6 +89,8 @@ pub fn run() {
             git_create_branch,
             git_push,
             git_create_pr,
+            git_prepare_task_branch,
+            git_commit_and_push,
             // Security
             security_evaluate,
             // Team Orchestration
