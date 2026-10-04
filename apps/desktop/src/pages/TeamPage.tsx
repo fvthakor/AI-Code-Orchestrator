@@ -7,17 +7,19 @@ import {
   Code2,
   X,
   History,
+  FolderOpen,
 } from "lucide-react";
 import { useTeamStore } from "../stores/useTeamStore";
 import { useProjectStore } from "../stores/useProjectStore";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import { Card, CardContent } from "../components/ui/Card";
 import { RoleSelector } from "../components/team/RoleSelector";
 import { TeamKanbanBoard } from "../components/team/TeamKanbanBoard";
 import { PrModal } from "../components/team/PrModal";
 
 export function TeamPage() {
-  const { currentProject } = useProjectStore();
+  const { currentProject, selectDirectoryAndOpen } = useProjectStore();
   const {
     workflows,
     activeWorkflow,
@@ -77,14 +79,6 @@ export function TeamPage() {
     });
   };
 
-  if (!currentProject) {
-    return (
-      <div className="text-center py-16 text-slate-500 text-xs">
-        Please open a project to orchestrate autonomous AI teams.
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12 animate-in fade-in">
       {/* Header */}
@@ -100,63 +94,104 @@ export function TeamPage() {
         </div>
 
         <div className="flex items-center space-x-2.5">
-          {workflows.length > 0 && (
-            <select
-              value={activeWorkflow?.id || ""}
-              onChange={(e) => selectWorkflow(e.target.value)}
-              className="px-3 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              {workflows.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.title} ({w.phase})
-                </option>
-              ))}
-            </select>
-          )}
+          {currentProject ? (
+            <>
+              {workflows.length > 0 && (
+                <select
+                  value={activeWorkflow?.id || ""}
+                  onChange={(e) => selectWorkflow(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  {workflows.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.title} ({w.phase})
+                    </option>
+                  ))}
+                </select>
+              )}
 
-          <Button onClick={() => setIsNewModalOpen(true)} className="flex items-center space-x-1.5 text-xs">
-            <Plus className="w-4 h-4" />
-            <span>Launch Team Workflow</span>
-          </Button>
+              <Button onClick={() => setIsNewModalOpen(true)} className="flex items-center space-x-1.5 text-xs">
+                <Plus className="w-4 h-4" />
+                <span>Launch Team Workflow</span>
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => selectDirectoryAndOpen()}
+              className="flex items-center space-x-1.5 text-xs"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span>Open Project Folder</span>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Role Configurations Card */}
+      {/* Role Configurations Card - Always visible globally */}
       <RoleSelector />
 
-      {/* Live Kanban Board */}
-      <TeamKanbanBoard onOpenPrModal={handleTriggerPr} />
+      {/* Project Execution Area */}
+      {currentProject ? (
+        <>
+          {/* Live Kanban Board */}
+          <TeamKanbanBoard onOpenPrModal={handleTriggerPr} />
 
-      {/* Workflow History Card */}
-      {workflows.length > 0 && (
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
-          <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
-            <History className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Team Workflow History</span>
-          </h3>
-          <div className="divide-y divide-slate-800/60">
-            {workflows.map((w) => (
-              <div
-                key={w.id}
-                onClick={() => selectWorkflow(w.id)}
-                className={`py-2.5 flex items-center justify-between text-xs cursor-pointer hover:bg-slate-800/40 px-2 rounded transition ${
-                  activeWorkflow?.id === w.id ? "bg-slate-800/60 text-indigo-200" : "text-slate-400"
-                }`}
-              >
-                <div className="space-y-0.5">
-                  <span className="font-medium text-slate-200">{w.title}</span>
-                  <div className="text-[11px] text-slate-500">{w.goal}</div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="font-mono text-[10px] text-slate-500">{new Date(w.createdAt).toLocaleDateString()}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 uppercase font-semibold text-slate-300">
-                    {w.phase}
-                  </span>
-                </div>
+          {/* Workflow History Card */}
+          {workflows.length > 0 && (
+            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
+              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                <History className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Team Workflow History ({currentProject.name})</span>
+              </h3>
+              <div className="divide-y divide-slate-800/60">
+                {workflows.map((w) => (
+                  <div
+                    key={w.id}
+                    onClick={() => selectWorkflow(w.id)}
+                    className={`py-2.5 flex items-center justify-between text-xs cursor-pointer hover:bg-slate-800/40 px-2 rounded transition ${
+                      activeWorkflow?.id === w.id ? "bg-slate-800/60 text-indigo-200" : "text-slate-400"
+                    }`}
+                  >
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-slate-200">{w.title}</span>
+                      <div className="text-[11px] text-slate-500">{w.goal}</div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-[10px] text-slate-500">{new Date(w.createdAt).toLocaleDateString()}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 uppercase font-semibold text-slate-300">
+                        {w.phase}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <Card className="bg-slate-900/40 border-slate-800 text-center py-10">
+          <CardContent className="space-y-3">
+            <FolderOpen className="w-8 h-8 text-indigo-400 mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-slate-200">
+                Global Team Configured — Open a Project to Run Pipelines
+              </h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Your team setup above is persistent across all workspaces. Open or create a project repository to execute autonomous multi-agent pipelines with automated Git branching & PR creation.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => selectDirectoryAndOpen()}
+              className="text-xs"
+            >
+              <FolderOpen className="w-3.5 h-3.5 mr-1.5" />
+              <span>Open Project Folder</span>
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Launch New Workflow Modal */}
