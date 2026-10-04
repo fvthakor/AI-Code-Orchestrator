@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::models::db::{
     Project, NewProject, Task, NewTask, Execution, NewExecution,
-    ExecutionEvent, AgentEntity
+    ExecutionEvent, AgentEntity, TeamWorkflow, NewTeamWorkflow,
+    TeamWorkflowStep, NewTeamWorkflowStep
 };
 
 #[derive(Clone)]
@@ -413,4 +414,253 @@ impl DbManager {
         )?;
         Ok(())
     }
+
+    // --- Team Workflows ---
+    pub fn create_team_workflow(&self, w: NewTeamWorkflow) -> Result<TeamWorkflow> {
+        let conn = self.conn.lock().unwrap();
+        let id = Uuid::new_v4().to_string();
+        let now = Utc::now().to_rfc3339();
+        let phase = "planning".to_string();
+        let is_greenfield_int = if w.is_greenfield { 1 } else { 0 };
+
+        conn.execute(
+            "INSERT INTO team_workflows (id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, developer_agent_id, tester_agent_id, current_step_index, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10, ?11)",
+            params![id, w.project_id, w.title, w.goal, is_greenfield_int, phase, w.plan_manager_agent_id, w.developer_agent_id, w.tester_agent_id, now, now],
+        )?;
+
+        Ok(TeamWorkflow {
+            id,
+            project_id: w.project_id,
+            title: w.title,
+            goal: w.goal,
+            is_greenfield: w.is_greenfield,
+            phase,
+            plan_manager_agent_id: w.plan_manager_agent_id,
+            developer_agent_id: w.developer_agent_id,
+            tester_agent_id: w.tester_agent_id,
+            branch_name: None,
+            pr_url: None,
+            pr_method: None,
+            current_step_index: 0,
+            created_at: now.clone(),
+            updated_at: now,
+            completed_at: None,
+        })
+    }
+
+    pub fn get_team_workflow_by_id(&self, id: &str) -> Result<Option<TeamWorkflow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, developer_agent_id, tester_agent_id, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows WHERE id = ?1"
+        )?;
+        let mut rows = stmt.query(params![id])?;
+
+        if let Some(row) = rows.next()? {
+            let is_greenfield_int: i32 = row.get(4)?;
+            Ok(Some(TeamWorkflow {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                title: row.get(2)?,
+                goal: row.get(3)?,
+                is_greenfield: is_greenfield_int != 0,
+                phase: row.get(5)?,
+                plan_manager_agent_id: row.get(6)?,
+                developer_agent_id: row.get(7)?,
+                tester_agent_id: row.get(8)?,
+                branch_name: row.get(9)?,
+                pr_url: row.get(10)?,
+                pr_method: row.get(11)?,
+                current_step_index: row.get(12)?,
+                created_at: row.get(13)?,
+                updated_at: row.get(14)?,
+                completed_at: row.get(15)?,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn list_team_workflows(&self, project_id: &str) -> Result<Vec<TeamWorkflow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, developer_agent_id, tester_agent_id, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows WHERE project_id = ?1 ORDER BY created_at DESC"
+        )?;
+        let rows = stmt.query_map(params![project_id], |row| {
+            let is_greenfield_int: i32 = row.get(4)?;
+            Ok(TeamWorkflow {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                title: row.get(2)?,
+                goal: row.get(3)?,
+                is_greenfield: is_greenfield_int != 0,
+                phase: row.get(5)?,
+                plan_manager_agent_id: row.get(6)?,
+                developer_agent_id: row.get(7)?,
+                tester_agent_id: row.get(8)?,
+                branch_name: row.get(9)?,
+                pr_url: row.get(10)?,
+                pr_method: row.get(11)?,
+                current_step_index: row.get(12)?,
+                created_at: row.get(13)?,
+                updated_at: row.get(14)?,
+                completed_at: row.get(15)?,
+            })
+        })?;
+
+        let mut list = Vec::new();
+        for item in rows {
+            list.push(item?);
+        }
+        Ok(list)
+    }
+
+    pub fn update_team_workflow_phase(&self, id: &str, phase: &str, current_step_index: i32, branch_name: Option<&str>, pr_url: Option<&str>, pr_method: Option<&str>, completed_at: Option<&str>) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        let now = Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE team_workflows SET phase = ?1, current_step_index = ?2, branch_name = COALESCE(?3, branch_name), pr_url = COALESCE(?4, pr_url), pr_method = COALESCE(?5, pr_method), completed_at = COALESCE(?6, completed_at), updated_at = ?7 WHERE id = ?8",
+            params![phase, current_step_index, branch_name, pr_url, pr_method, completed_at, now, id],
+        )?;
+        Ok(())
+    }
+
+    // --- Team Workflow Steps ---
+    pub fn create_team_workflow_step(&self, s: NewTeamWorkflowStep) -> Result<TeamWorkflowStep> {
+        let conn = self.conn.lock().unwrap();
+        let id = Uuid::new_v4().to_string();
+        let status = "pending".to_string();
+
+        conn.execute(
+            "INSERT INTO team_workflow_steps (id, workflow_id, step_number, title, description, assigned_role, assigned_agent_id, status, retry_count, test_command) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9)",
+            params![id, s.workflow_id, s.step_number, s.title, s.description, s.assigned_role, s.assigned_agent_id, status, s.test_command],
+        )?;
+
+        Ok(TeamWorkflowStep {
+            id,
+            workflow_id: s.workflow_id,
+            step_number: s.step_number,
+            title: s.title,
+            description: s.description,
+            assigned_role: s.assigned_role,
+            assigned_agent_id: s.assigned_agent_id,
+            status,
+            retry_count: 0,
+            test_command: s.test_command,
+            verification_report: None,
+            error_log: None,
+            started_at: None,
+            completed_at: None,
+        })
+    }
+
+    pub fn list_team_workflow_steps(&self, workflow_id: &str) -> Result<Vec<TeamWorkflowStep>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, workflow_id, step_number, title, description, assigned_role, assigned_agent_id, status, retry_count, test_command, verification_report, error_log, started_at, completed_at FROM team_workflow_steps WHERE workflow_id = ?1 ORDER BY step_number ASC"
+        )?;
+        let rows = stmt.query_map(params![workflow_id], |row| {
+            Ok(TeamWorkflowStep {
+                id: row.get(0)?,
+                workflow_id: row.get(1)?,
+                step_number: row.get(2)?,
+                title: row.get(3)?,
+                description: row.get(4)?,
+                assigned_role: row.get(5)?,
+                assigned_agent_id: row.get(6)?,
+                status: row.get(7)?,
+                retry_count: row.get(8)?,
+                test_command: row.get(9)?,
+                verification_report: row.get(10)?,
+                error_log: row.get(11)?,
+                started_at: row.get(12)?,
+                completed_at: row.get(13)?,
+            })
+        })?;
+
+        let mut steps = Vec::new();
+        for s in rows {
+            steps.push(s?);
+        }
+        Ok(steps)
+    }
+
+    pub fn update_team_workflow_step(
+        &self,
+        id: &str,
+        status: &str,
+        retry_count: i32,
+        verification_report: Option<&str>,
+        error_log: Option<&str>,
+        started_at: Option<&str>,
+        completed_at: Option<&str>,
+    ) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE team_workflow_steps SET status = ?1, retry_count = ?2, verification_report = ?3, error_log = ?4, started_at = COALESCE(?5, started_at), completed_at = COALESCE(?6, completed_at) WHERE id = ?7",
+            params![status, retry_count, verification_report, error_log, started_at, completed_at, id],
+        )?;
+        Ok(())
+    }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::db::{NewProject, NewTeamWorkflow, NewTeamWorkflowStep};
+
+    #[test]
+    fn test_database_team_workflows_and_crud() {
+        let db = DbManager::new_in_memory().expect("failed to init db");
+
+        let project = db.create_project(NewProject {
+            name: "TestProject".to_string(),
+            path: "C:\\Test\\Project".to_string(),
+            stack_json: "{}".to_string(),
+        }).expect("failed to create project");
+
+        let workflow = db.create_team_workflow(NewTeamWorkflow {
+            project_id: project.id.clone(),
+            title: "Build Authentication".to_string(),
+            goal: "Add user login and signup".to_string(),
+            is_greenfield: false,
+            plan_manager_agent_id: "claude".to_string(),
+            developer_agent_id: "codex".to_string(),
+            tester_agent_id: "antigravity".to_string(),
+        }).expect("failed to create team workflow");
+
+        assert_eq!(workflow.title, "Build Authentication");
+        assert_eq!(workflow.phase, "planning");
+
+        let step1 = db.create_team_workflow_step(NewTeamWorkflowStep {
+            workflow_id: workflow.id.clone(),
+            step_number: 1,
+            title: "Scaffold Auth Controller".to_string(),
+            description: "Create endpoint".to_string(),
+            assigned_role: "developer".to_string(),
+            assigned_agent_id: "codex".to_string(),
+            test_command: Some("pnpm test".to_string()),
+        }).expect("failed to create step");
+
+        assert_eq!(step1.step_number, 1);
+        assert_eq!(step1.status, "pending");
+
+        let steps = db.list_team_workflow_steps(&workflow.id).expect("failed to list steps");
+        assert_eq!(steps.len(), 1);
+
+        db.update_team_workflow_step(
+            &step1.id,
+            "completed",
+            0,
+            Some("All 4 unit tests passed"),
+            None,
+            None,
+            None,
+        ).expect("failed to update step");
+
+        let updated_steps = db.list_team_workflow_steps(&workflow.id).expect("failed to list updated steps");
+        assert_eq!(updated_steps[0].status, "completed");
+        assert_eq!(updated_steps[0].verification_report, Some("All 4 unit tests passed".to_string()));
+    }
+}
+
+

@@ -7,6 +7,7 @@ import { AgentsPage } from "./pages/AgentsPage";
 import { ChangesPage } from "./pages/ChangesPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { TeamPage } from "./pages/TeamPage";
 import { NewTaskModal } from "./components/NewTaskModal";
 import { useProjectStore } from "./stores/useProjectStore";
 import { useAgentStore } from "./stores/useAgentStore";
@@ -58,6 +59,8 @@ export default function App() {
         return <ChangesPage />;
       case "executions":
         return <ExecutionsPage />;
+      case "team":
+        return <TeamPage />;
       case "settings":
         return <SettingsPage />;
       default:

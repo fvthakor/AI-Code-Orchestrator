@@ -5,3 +5,4 @@ pub mod executions;
 pub mod terminal;
 pub mod git;
 pub mod security;
+pub mod team;

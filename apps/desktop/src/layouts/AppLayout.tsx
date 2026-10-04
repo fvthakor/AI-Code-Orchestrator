@@ -16,6 +16,7 @@ import {
   FolderGit2,
   Heart,
   Coffee,
+  Users,
 } from "lucide-react";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useTerminalStore } from "../stores/useTerminalStore";
@@ -28,6 +29,7 @@ import { Button } from "../components/ui/Button";
 
 export type NavPage =
   | "dashboard"
+  | "team"
   | "projects"
   | "tasks"
   | "agents"
@@ -55,6 +57,7 @@ export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps)
 
   const navItems: { id: NavPage; label: string; icon: React.ReactNode }[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: "team", label: "Autonomous Team", icon: <Users className="w-4 h-4 text-indigo-400" /> },
     { id: "projects", label: "Projects", icon: <FolderOpen className="w-4 h-4" /> },
     { id: "tasks", label: "Tasks", icon: <CheckSquare className="w-4 h-4" /> },
     { id: "agents", label: "AI Agents", icon: <Bot className="w-4 h-4" /> },

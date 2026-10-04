@@ -139,3 +139,69 @@ export interface GitCommitOptions {
   files?: string[];
   addAll?: boolean;
 }
+
+// --- Multi-Agent Team Orchestration Types ---
+export type TeamRole = 'plan_manager' | 'developer' | 'tester';
+export type WorkflowPhase = 'idle' | 'planning' | 'developing' | 'testing' | 'reviewing' | 'completed' | 'failed';
+export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+
+export interface TeamConfig {
+  planManagerAgentId: string;
+  developerAgentId: string;
+  testerAgentId: string;
+  maxRetries: number;
+  autoPr: boolean;
+  githubRepoUrl?: string;
+}
+
+export interface TeamWorkflowStep {
+  id: string;
+  workflowId: string;
+  stepNumber: number;
+  title: string;
+  description: string;
+  assignedRole: TeamRole;
+  assignedAgentId: string;
+  status: StepStatus;
+  retryCount: number;
+  testCommand?: string;
+  verificationReport?: string;
+  errorLog?: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface TeamWorkflow {
+  id: string;
+  projectId: string;
+  title: string;
+  goal: string;
+  isGreenfield: boolean;
+  phase: WorkflowPhase;
+  planManagerAgentId: string;
+  developerAgentId: string;
+  testerAgentId: string;
+  branchName?: string;
+  prUrl?: string;
+  prMethod?: 'api' | 'cli' | 'web';
+  steps: TeamWorkflowStep[];
+  currentStepIndex: number;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface GitHubPrRequest {
+  projectId: string;
+  branchName: string;
+  baseBranch?: string;
+  title: string;
+  body: string;
+  githubRepoUrl?: string;
+}
+
+export interface GitHubPrResult {
+  prUrl: string;
+  method: 'api' | 'cli' | 'web';
+  isWebFallback: boolean;
+}

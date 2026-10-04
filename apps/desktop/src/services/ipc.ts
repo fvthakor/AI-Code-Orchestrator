@@ -9,6 +9,10 @@ import type {
   GitContext,
   GitCommitOptions,
   PolicyEvaluation,
+  TeamWorkflow,
+  TeamWorkflowStep,
+  GitHubPrRequest,
+  GitHubPrResult,
 } from "@ai-orchestrator/shared-types";
 
 export interface GitCommitInfo {
@@ -163,6 +167,73 @@ export const IpcService = {
       message: options.message,
       files: options.files,
     });
+  },
+
+  async gitInitOrLink(projectId: string, remoteUrl?: string, defaultBranch?: string): Promise<string> {
+    return await invoke<string>("git_init_or_link", { projectId, remoteUrl, defaultBranch });
+  },
+
+  async gitCreateBranch(projectId: string, branchName: string): Promise<void> {
+    return await invoke<void>("git_create_branch", { projectId, branchName });
+  },
+
+  async gitPush(projectId: string, branchName: string): Promise<string> {
+    return await invoke<string>("git_push", { projectId, branchName });
+  },
+
+  async gitCreatePr(request: GitHubPrRequest): Promise<GitHubPrResult> {
+    return await invoke<GitHubPrResult>("git_create_pr", { request });
+  },
+
+  // Team Orchestration
+  async teamStartWorkflow(params: {
+    projectId: string;
+    title: string;
+    goal: string;
+    isGreenfield: boolean;
+    planManagerAgentId: string;
+    developerAgentId: string;
+    testerAgentId: string;
+  }): Promise<TeamWorkflow> {
+    return await invoke<TeamWorkflow>("team_start_workflow", params);
+  },
+
+  async teamGetWorkflow(workflowId: string): Promise<TeamWorkflow | null> {
+    return await invoke<TeamWorkflow | null>("team_get_workflow", { workflowId });
+  },
+
+  async teamListWorkflows(projectId: string): Promise<TeamWorkflow[]> {
+    return await invoke<TeamWorkflow[]>("team_list_workflows", { projectId });
+  },
+
+  async teamListWorkflowSteps(workflowId: string): Promise<TeamWorkflowStep[]> {
+    return await invoke<TeamWorkflowStep[]>("team_list_workflow_steps", { workflowId });
+  },
+
+  async teamAddStep(params: {
+    workflowId: string;
+    stepNumber: number;
+    title: string;
+    description: string;
+    assignedRole: string;
+    assignedAgentId: string;
+    testCommand?: string;
+  }): Promise<TeamWorkflowStep> {
+    return await invoke<TeamWorkflowStep>("team_add_step", params);
+  },
+
+  async teamAdvanceStep(params: {
+    workflowId: string;
+    stepId: string;
+    status: string;
+    verificationReport?: string;
+    errorLog?: string;
+  }): Promise<TeamWorkflow> {
+    return await invoke<TeamWorkflow>("team_advance_step", params);
+  },
+
+  async teamRetryStep(workflowId: string, stepId: string): Promise<TeamWorkflowStep> {
+    return await invoke<TeamWorkflowStep>("team_retry_step", { workflowId, stepId });
   },
 
   // Security
