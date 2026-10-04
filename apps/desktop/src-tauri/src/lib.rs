@@ -1,3 +1,6 @@
+pub mod models;
+pub mod database;
+
 #[tauri::command]
 fn ping() -> &'static str {
     "pong"
