@@ -2,6 +2,7 @@ pub mod models;
 pub mod database;
 pub mod filesystem;
 pub mod project;
+pub mod execution;
 
 #[tauri::command]
 fn ping() -> &'static str {
