@@ -57,6 +57,7 @@ interface TeamState {
   removeAgentFromRole: (role: 'plan_manager' | 'developer' | 'tester', index: number) => void;
   moveAgentInRole: (role: 'plan_manager' | 'developer' | 'tester', fromIndex: number, toIndex: number) => void;
   setAgentAtRoleIndex: (role: 'plan_manager' | 'developer' | 'tester', index: number, agentId: string) => void;
+  saveConfig: () => void;
 }
 
 const DEFAULT_GLOBAL_TEAM_CONFIG: TeamConfig = {
@@ -372,5 +373,9 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       persistTeamConfig(newConfig);
       return { config: newConfig };
     });
+  },
+
+  saveConfig: () => {
+    persistTeamConfig(get().config);
   },
 }));

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAgentStore } from "../../stores/useAgentStore";
 import { useTeamStore } from "../../stores/useTeamStore";
 import {
@@ -8,6 +9,8 @@ import {
   ChevronUp,
   ChevronDown,
   X,
+  Save,
+  Check,
 } from "lucide-react";
 import { Button } from "../ui/Button";
 
@@ -174,7 +177,16 @@ function RoleCard({
 }
 
 export function RoleSelector() {
-  const { config, setConfig } = useTeamStore();
+  const { config, setConfig, saveConfig } = useTeamStore();
+  const [isSaved, setIsSaved] = useState(false);
+
+  const handleSave = () => {
+    saveConfig();
+    setIsSaved(true);
+    setTimeout(() => {
+      setIsSaved(false);
+    }, 2500);
+  };
 
   return (
     <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
@@ -183,7 +195,30 @@ export function RoleSelector() {
           <Bot className="w-4 h-4 text-indigo-400" />
           <span>Autonomous Team Roles Configuration</span>
         </h3>
-        <span className="text-[11px] text-slate-500 font-mono">Priority Cascade & Fallbacks</span>
+        <div className="flex items-center space-x-3">
+          <span className="text-[11px] text-slate-500 font-mono hidden sm:inline">Priority Cascade & Fallbacks</span>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            className={`flex items-center space-x-1.5 text-xs h-7 px-2.5 transition shadow-sm ${
+              isSaved
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+            }`}
+          >
+            {isSaved ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-white" />
+                <span>Saved Globally!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Team Setup</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -230,18 +265,42 @@ export function RoleSelector() {
           </select>
         </div>
 
-        <label className="flex items-center space-x-2 text-slate-300 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={config.autoPr}
-            onChange={(e) => setConfig({ autoPr: e.target.checked })}
-            className="w-4 h-4 text-indigo-600 bg-slate-950 border-slate-700 rounded"
-          />
-          <span className="flex items-center space-x-1">
-            <GitPullRequest className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Auto-create Pull Request on workflow completion</span>
-          </span>
-        </label>
+        <div className="flex items-center space-x-4">
+          <label className="flex items-center space-x-2 text-slate-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={config.autoPr}
+              onChange={(e) => setConfig({ autoPr: e.target.checked })}
+              className="w-4 h-4 text-indigo-600 bg-slate-950 border-slate-700 rounded"
+            />
+            <span className="flex items-center space-x-1">
+              <GitPullRequest className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Auto-create Pull Request on workflow completion</span>
+            </span>
+          </label>
+
+          <Button
+            size="sm"
+            onClick={handleSave}
+            className={`flex items-center space-x-1.5 text-xs h-8 px-3.5 transition shadow-sm ${
+              isSaved
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+            }`}
+          >
+            {isSaved ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-white" />
+                <span>Saved Globally!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Configuration</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
