@@ -1,0 +1,16 @@
+{
+  "name": "ai-code-orchestrator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local orchestration layer for AI coding CLIs on Windows",
+  "scripts": {
+    "dev": "pnpm --filter desktop dev",
+    "build": "pnpm --filter shared-types build && pnpm --filter desktop build",
+    "tauri": "pnpm --filter desktop tauri",
+    "test": "pnpm --filter desktop test",
+    "typecheck": "pnpm --filter shared-types build && pnpm --filter desktop typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,35 @@
+# Node & Dependencies
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Rust & Cargo
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Tauri
+apps/desktop/src-tauri/target/
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS & Editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment & Sensitive
+.env
+.env.*
+!.env.example
