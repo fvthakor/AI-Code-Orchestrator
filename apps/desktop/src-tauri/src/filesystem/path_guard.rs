@@ -23,7 +23,15 @@ impl PathGuard {
         }
 
         match path.canonicalize() {
-            Ok(canonical) => Ok(canonical),
+            Ok(canonical) => {
+                let s = canonical.to_string_lossy();
+                let clean = if let Some(stripped) = s.strip_prefix(r"\\?\") {
+                    PathBuf::from(stripped)
+                } else {
+                    canonical
+                };
+                Ok(clean)
+            }
             Err(e) => Err(format!("Failed to resolve path: {}", e)),
         }
     }

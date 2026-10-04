@@ -65,7 +65,13 @@ impl ProcessManager {
             }
             c
         };
-        cmd.cwd(working_dir);
+        let clean_wd_str = working_dir.to_string_lossy();
+        let clean_wd = if let Some(stripped) = clean_wd_str.strip_prefix(r"\\?\") {
+            Path::new(stripped)
+        } else {
+            working_dir
+        };
+        cmd.cwd(clean_wd);
 
         let child = pair
             .slave

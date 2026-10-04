@@ -1,5 +1,4 @@
-use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use async_trait::async_trait;
 
 use super::adapter::{AgentAdapter, AgentCapabilities, AgentDetectionResult, AgentTask, ExecutionCommand};
@@ -51,18 +50,23 @@ impl AgentAdapter for ClaudeAdapter {
         if let Some(ref path) = exe_path {
             version = WindowsExecutableResolver::get_version(path, "--version");
             if version.is_some() {
-                status = "connected".to_string();
+                let auth_check = WindowsExecutableResolver::get_version(path, "auth status");
+                let is_logged_in = auth_check
+                    .as_ref()
+                    .map(|s| s.contains("\"loggedIn\": true") || s.contains("\"loggedIn\":true"))
+                    .unwrap_or(false);
+
+                if is_logged_in {
+                    status = "connected".to_string();
+                    auth_configured = true;
+                } else {
+                    status = "auth_required".to_string();
+                    auth_configured = false;
+                    status_message = Some("Claude Code CLI is installed, but OAuth session is expired or not logged in. Run 'claude' in terminal to authenticate, or rely on Antigravity (AGY) as fallback.".to_string());
+                }
             } else {
                 status = "error".to_string();
                 status_message = Some("Executable found but failed to report version".to_string());
-            }
-
-            // Safe auth check without extracting tokens
-            if let Ok(home) = env::var("USERPROFILE") {
-                let home_path = PathBuf::from(home);
-                if home_path.join(".claude.json").exists() || home_path.join(".claude").exists() {
-                    auth_configured = true;
-                }
             }
         } else {
             status_message = Some("Claude CLI not found in PATH or custom location".to_string());

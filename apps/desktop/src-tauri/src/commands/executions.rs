@@ -72,7 +72,8 @@ pub async fn execution_run_agent(
         description: task.description.clone(),
     };
 
-    let project_dir = Path::new(&project.path);
+    let clean_path = project.path.strip_prefix(r"\\?\").unwrap_or(&project.path);
+    let project_dir = Path::new(clean_path);
 
     // Auto-bootstrap greenfield workspace: if project_dir has no manifest, create base package.json so CLIs execute code directly without prompting for interactive decisions
     if project_dir.exists() {
@@ -230,7 +231,8 @@ pub async fn execution_run_command(
         return Err(format!("Security policy blocked execution: {}", eval.reason));
     }
 
-    let project_dir = Path::new(&project.path);
+    let clean_path = project.path.strip_prefix(r"\\?\").unwrap_or(&project.path);
+    let project_dir = Path::new(clean_path);
 
     let execution = db.create_execution(NewExecution {
         task_id: None,

@@ -5,6 +5,7 @@ import { useExecutionStore } from "./useExecutionStore";
 import { useTeamStore } from "./useTeamStore";
 import { useProjectStore } from "./useProjectStore";
 import { useTerminalStore } from "./useTerminalStore";
+import { useAgentStore } from "./useAgentStore";
 
 export type AutopilotPhase =
   | "idle"
@@ -68,12 +69,47 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
     if (get().isRunning) return;
 
     const teamConfig = useTeamStore.getState().config;
+    const connectedAgents = useAgentStore.getState().agents;
+
+    // Pick active agents based on priority order and connected status (automatic fallback)
+    const planCandidates = [
+      ...(teamConfig.planManagerAgents || []),
+      teamConfig.planManagerAgentId,
+      "claude",
+      "antigravity",
+    ].filter(Boolean) as string[];
+
     const planManager =
-      teamConfig.planManagerAgents?.[0] || teamConfig.planManagerAgentId || "claude";
+      planCandidates.find((id) => {
+        const ag = connectedAgents.find((a) => a.id === id);
+        return ag && ag.status === "connected";
+      }) || planCandidates[0] || "claude";
+
+    const devCandidates = [
+      ...(teamConfig.developerAgents || []),
+      teamConfig.developerAgentId,
+      "opencode",
+      "claude",
+    ].filter(Boolean) as string[];
+
     const developer =
-      teamConfig.developerAgents?.[0] || teamConfig.developerAgentId || "opencode";
+      devCandidates.find((id) => {
+        const ag = connectedAgents.find((a) => a.id === id);
+        return ag && ag.status === "connected";
+      }) || devCandidates[0] || "opencode";
+
+    const testerCandidates = [
+      ...(teamConfig.testerAgents || []),
+      teamConfig.testerAgentId,
+      "antigravity",
+      "claude",
+    ].filter(Boolean) as string[];
+
     const tester =
-      teamConfig.testerAgents?.[0] || teamConfig.testerAgentId || "antigravity";
+      testerCandidates.find((id) => {
+        const ag = connectedAgents.find((a) => a.id === id);
+        return ag && ag.status === "connected";
+      }) || testerCandidates[0] || "antigravity";
 
     set({
       isRunning: true,
@@ -93,7 +129,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
     get().appendLog(`👥 Assigned Team: Plan Manager (${planManager}), Developer (${developer}), QA Tester (${tester}).`);
 
     try {
-      // Step 1: Execute Plan Manager (Claude / AGY) to analyze and plan the entire project
+      // Step 1: Execute Plan Manager to analyze and plan the entire project
       get().appendLog(`Phase 1: Dispatching project planning to Lead Architect (${planManager})...`);
 
       const planTaskTitle = `[Plan Manager] Project Blueprint & Architecture: ${title}`;
@@ -110,22 +146,60 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
             // Wait for Plan Manager execution to complete
             let planDone = false;
             let checks = 0;
-            while (!planDone && get().isRunning && checks < 45) {
-              await new Promise((r) => setTimeout(r, 2000));
+            while (!planDone && get().isRunning && checks < 30) {
+              await new Promise((r) => setTimeout(r, 1500));
               checks++;
               const active = await useExecutionStore.getState().loadActiveAgentTask();
               if (!active) {
                 planDone = true;
               }
             }
+
+            // Inspect logs for auth failure
+            const planLogs = useExecutionStore.getState().terminalLogs[planExecId] || "";
+            if (planLogs.includes("Failed to authenticate") || planLogs.includes("OAuth session expired")) {
+              get().appendLog(`⚠️ ${planManager} authentication expired.`);
+              const fallbackAgent =
+                teamConfig.planManagerAgents?.find((a) => a !== planManager) ||
+                (planManager !== "antigravity" ? "antigravity" : null);
+
+              if (fallbackAgent) {
+                get().appendLog(`🔄 Falling back to ${fallbackAgent.toUpperCase()} for Project Planning...`);
+                set({
+                  statusMessage: `Falling back to ${fallbackAgent} for Project Planning...`,
+                });
+
+                const fbTask = await useTaskStore.getState().createTask(
+                  projectId,
+                  `[Plan Manager Fallback] Project Blueprint: ${title}`,
+                  planTaskDesc,
+                  fallbackAgent
+                );
+                if (fbTask) {
+                  const fbExecId = await useExecutionStore.getState().runAgentTask(fbTask.id, fallbackAgent);
+                  if (fbExecId) {
+                    useTerminalStore.getState().openAgentStream(fbExecId);
+                    let fbDone = false;
+                    let fbChecks = 0;
+                    while (!fbDone && get().isRunning && fbChecks < 30) {
+                      await new Promise((r) => setTimeout(r, 1500));
+                      fbChecks++;
+                      const active = await useExecutionStore.getState().loadActiveAgentTask();
+                      if (!active) fbDone = true;
+                    }
+                  }
+                  await useTaskStore.getState().updateStatus(fbTask.id, "completed");
+                }
+              }
+            }
           }
         } catch (planErr) {
-          get().appendLog(`ℹ Plan Manager note: ${String(planErr)} (falling back to architectural blueprint)`);
+          get().appendLog(`ℹ Plan Manager note: ${String(planErr)} (continuing with architectural roadmap)`);
         }
         await useTaskStore.getState().updateStatus(planTask.id, "completed");
       }
 
-      get().appendLog(`✓ Plan Manager (${planManager}) finished project architectural roadmap.`);
+      get().appendLog(`✓ Plan Manager finished project architectural roadmap.`);
       get().appendLog(`Phase 2: Adding planned tasks one-by-one to project task board...`);
 
       // Step 2: Add planned tasks one by one to the project
@@ -152,7 +226,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         const task = await useTaskStore.getState().createTask(projectId, bp.title, bp.description, developer);
         if (task) {
           createdTasks.push(task);
-          get().appendLog(`✓ ${planManager.toUpperCase()} (Plan Manager) planned and added Task #${i + 1}: "${bp.title}"`);
+          get().appendLog(`✓ Plan Manager added Task #${i + 1}: "${bp.title}"`);
           // Live reload task list so tasks appear one by one in the project task board
           await useTaskStore.getState().loadTasks(projectId);
           await new Promise((r) => setTimeout(r, 600));
@@ -266,7 +340,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
       set({
         isRunning: false,
         currentPhase: "completed",
-        statusMessage: `🎉 Autonomous Autopilot finished! All tasks planned, coded, tested, and pushed.`,
+        statusMessage: `🎉 Autonomous Autopilot finished! All ${createdTasks.length} tasks planned, coded, tested, and pushed.`,
         activeTaskId: null,
         activeTaskTitle: null,
       });
