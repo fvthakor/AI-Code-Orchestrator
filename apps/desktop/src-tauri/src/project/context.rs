@@ -28,3 +28,15 @@ pub struct ScannedProjectContext {
     pub stack: DetectedStack,
     pub has_git: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectContext {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub stack: DetectedStack,
+    pub git: Option<GitContext>,
+    pub has_git: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}

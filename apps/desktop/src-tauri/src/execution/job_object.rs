@@ -63,6 +63,9 @@ impl Drop for WinJobObject {
     }
 }
 
+unsafe impl Send for WinJobObject {}
+unsafe impl Sync for WinJobObject {}
+
 // Fallback process tree killer for Windows
 pub fn kill_process_tree(pid: u32) {
     let _ = std::process::Command::new("taskkill")
