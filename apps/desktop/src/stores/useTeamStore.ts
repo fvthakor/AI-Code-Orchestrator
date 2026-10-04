@@ -53,6 +53,10 @@ interface TeamState {
   }) => Promise<GitHubPrResult | null>;
   setConfig: (config: Partial<TeamConfig>) => void;
   setPrModalOpen: (open: boolean) => void;
+  addAgentToRole: (role: 'plan_manager' | 'developer' | 'tester', agentId: string) => void;
+  removeAgentFromRole: (role: 'plan_manager' | 'developer' | 'tester', index: number) => void;
+  moveAgentInRole: (role: 'plan_manager' | 'developer' | 'tester', fromIndex: number, toIndex: number) => void;
+  setAgentAtRoleIndex: (role: 'plan_manager' | 'developer' | 'tester', index: number, agentId: string) => void;
 }
 
 export const useTeamStore = create<TeamState>((set, get) => ({
@@ -60,6 +64,9 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   activeWorkflow: null,
   steps: [],
   config: {
+    planManagerAgents: ["claude", "antigravity"],
+    developerAgents: ["codex", "claude"],
+    testerAgents: ["antigravity", "codex"],
     planManagerAgentId: "claude",
     planManagerFallbackAgentId: "antigravity",
     developerAgentId: "codex",
@@ -263,4 +270,81 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   setPrModalOpen: (open) => set({ isPrModalOpen: open }),
+
+  addAgentToRole: (role, agentId) => {
+    set((state) => {
+      const field = role === 'plan_manager' ? 'planManagerAgents' : role === 'developer' ? 'developerAgents' : 'testerAgents';
+      const current = state.config[field] || [];
+      if (current.includes(agentId)) return state;
+      const updated = [...current, agentId];
+      const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
+      const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
+      return {
+        config: {
+          ...state.config,
+          [field]: updated,
+          [primaryKey]: updated[0] || "",
+          [fallbackKey]: updated[1] || undefined,
+        },
+      };
+    });
+  },
+
+  removeAgentFromRole: (role, index) => {
+    set((state) => {
+      const field = role === 'plan_manager' ? 'planManagerAgents' : role === 'developer' ? 'developerAgents' : 'testerAgents';
+      const current = state.config[field] || [];
+      const updated = current.filter((_, i) => i !== index);
+      const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
+      const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
+      return {
+        config: {
+          ...state.config,
+          [field]: updated,
+          [primaryKey]: updated[0] || "",
+          [fallbackKey]: updated[1] || undefined,
+        },
+      };
+    });
+  },
+
+  moveAgentInRole: (role, fromIndex, toIndex) => {
+    set((state) => {
+      const field = role === 'plan_manager' ? 'planManagerAgents' : role === 'developer' ? 'developerAgents' : 'testerAgents';
+      const current = [...(state.config[field] || [])];
+      if (fromIndex < 0 || fromIndex >= current.length || toIndex < 0 || toIndex >= current.length) return state;
+      const [moved] = current.splice(fromIndex, 1);
+      current.splice(toIndex, 0, moved);
+      const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
+      const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
+      return {
+        config: {
+          ...state.config,
+          [field]: current,
+          [primaryKey]: current[0] || "",
+          [fallbackKey]: current[1] || undefined,
+        },
+      };
+    });
+  },
+
+  setAgentAtRoleIndex: (role, index, agentId) => {
+    set((state) => {
+      const field = role === 'plan_manager' ? 'planManagerAgents' : role === 'developer' ? 'developerAgents' : 'testerAgents';
+      const current = [...(state.config[field] || [])];
+      if (index >= 0 && index < current.length) {
+        current[index] = agentId;
+      }
+      const primaryKey = role === 'plan_manager' ? 'planManagerAgentId' : role === 'developer' ? 'developerAgentId' : 'testerAgentId';
+      const fallbackKey = role === 'plan_manager' ? 'planManagerFallbackAgentId' : role === 'developer' ? 'developerFallbackAgentId' : 'testerFallbackAgentId';
+      return {
+        config: {
+          ...state.config,
+          [field]: current,
+          [primaryKey]: current[0] || "",
+          [fallbackKey]: current[1] || undefined,
+        },
+      };
+    });
+  },
 }));

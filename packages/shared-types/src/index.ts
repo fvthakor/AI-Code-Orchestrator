@@ -146,6 +146,9 @@ export type WorkflowPhase = 'idle' | 'planning' | 'developing' | 'testing' | 're
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
 export interface TeamConfig {
+  planManagerAgents?: string[];
+  developerAgents?: string[];
+  testerAgents?: string[];
   planManagerAgentId: string;
   planManagerFallbackAgentId?: string;
   developerAgentId: string;
