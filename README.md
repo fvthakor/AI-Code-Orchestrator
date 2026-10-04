@@ -1,6 +1,6 @@
 # AI Code Orchestrator — Windows V1
 
-A local orchestration desktop application for Windows 10/11 x64 that manages, connects, and coordinates local AI coding CLIs (**Claude Code**, **OpenAI Codex CLI**, and **OpenCode**) within local project directories.
+A local orchestration desktop application for Windows 10/11 x64 that manages, connects, and coordinates local AI coding CLIs (**Claude Code**, **OpenAI Codex CLI**, **OpenCode**, and **Antigravity (AGY)**) within local project directories.
 
 Built with **Tauri v2**, **Rust**, **React**, **TypeScript**, **Tailwind CSS**, and authentic **Windows ConPTY** terminal streaming.
 
@@ -8,7 +8,7 @@ Built with **Tauri v2**, **Rust**, **React**, **TypeScript**, **Tailwind CSS**, 
 
 ## Highlights & Features
 
-- **Multi-Agent Adapter Architecture**: Modular `AgentAdapter` abstraction for Claude Code, Codex, and OpenCode, with automatic Windows PATH resolution (`.cmd`, `.bat`, `.exe`) and custom executable overrides.
+- **Multi-Agent Adapter Architecture**: Modular `AgentAdapter` abstraction for Claude Code, Codex, OpenCode, and Antigravity, with automatic Windows PATH resolution (`.cmd`, `.bat`, `.exe`) and custom executable overrides.
 - **Interactive ConPTY Streaming**: Real-time terminal sessions powered by `portable-pty` on Windows and `@xterm/xterm` in the frontend, supporting full bidirectional input, resize, and ANSI escape sequences.
 - **Process Lifecycle & Tree Cleanup**: Uses Win32 Job Objects (`JOBOBJECT_EXTENDED_LIMIT_INFORMATION` with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) to ensure no orphan/zombie child processes are left behind on Windows.
 - **Deep Tech-Stack Detection**: Non-executing heuristic scanner detecting Git, Node.js (npm, yarn, pnpm), PHP (Composer, Laravel), Python (pip, poetry), Rust (Cargo), Go, Docker, React, Vue, Angular, Next.js, and databases.

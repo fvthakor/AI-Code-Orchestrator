@@ -45,7 +45,15 @@ impl WindowsExecutableResolver {
             search_dirs.push(user_dir.join(".cargo").join("bin"));
             search_dirs.push(user_dir.join("scoop").join("shims"));
             search_dirs.push(user_dir.join("AppData").join("Local").join("Programs"));
+            search_dirs.push(user_dir.join("AppData").join("Local").join("agy").join("bin"));
         }
+
+        if let Ok(localappdata) = env::var("LOCALAPPDATA") {
+            search_dirs.push(PathBuf::from(localappdata).join("agy").join("bin"));
+        }
+
+        search_dirs.push(PathBuf::from(r"E:\software\Antigravity\bin"));
+        search_dirs.push(PathBuf::from(r"C:\Program Files\Antigravity\bin"));
 
         for dir in search_dirs {
             if dir.exists() {

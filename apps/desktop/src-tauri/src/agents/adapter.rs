@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentCapabilities {
     pub coding: bool,
     pub terminal: bool,
@@ -22,6 +23,7 @@ impl Default for AgentCapabilities {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentDetectionResult {
     pub id: String,
     pub name: String,
