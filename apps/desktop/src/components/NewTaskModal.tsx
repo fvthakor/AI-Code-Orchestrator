@@ -132,7 +132,7 @@ export function NewTaskModal({ isOpen, onClose, onTaskStarted }: NewTaskModalPro
             <label className="text-xs font-semibold text-slate-300 block mb-2">
               Assign AI Agent Adapter
             </label>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {agents.map((agent) => {
                 const isSelected = selectedAgentId === agent.id;
                 const isInstalled = agent.status === "connected";

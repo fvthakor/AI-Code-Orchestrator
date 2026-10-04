@@ -5,6 +5,7 @@ use super::adapter::{AgentAdapter, AgentDetectionResult};
 use super::claude::ClaudeAdapter;
 use super::codex::CodexAdapter;
 use super::opencode::OpenCodeAdapter;
+use super::antigravity::AntigravityAdapter;
 
 #[derive(Clone)]
 pub struct AgentRegistry {
@@ -20,6 +21,7 @@ impl AgentRegistry {
         registry.register(Arc::new(ClaudeAdapter::default()));
         registry.register(Arc::new(CodexAdapter::default()));
         registry.register(Arc::new(OpenCodeAdapter::default()));
+        registry.register(Arc::new(AntigravityAdapter::default()));
 
         registry
     }

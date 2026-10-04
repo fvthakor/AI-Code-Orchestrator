@@ -46,6 +46,12 @@ pub trait AgentAdapter: Send + Sync {
 - **Command Construction**: Runs `opencode run "<prompt>"`.
 - **Capabilities**: Code generation, execution, and local diff inspection.
 
+### 4. Antigravity (`AntigravityAdapter`)
+- **Default Executable**: `agy` or `antigravity` (resolves `agy.exe` in `%LOCALAPPDATA%\agy\bin`, `antigravity.cmd`, or PATH).
+- **Detection**: Probes Windows paths, UserProfile, LocalAppData, and executes `agy --version` / `antigravity --version`.
+- **Command Construction**: Runs `agy --print "<prompt>"` in headless print mode, or interactive ConPTY session.
+- **Capabilities**: Full code editing, terminal execution, Git operations, and autonomous planning.
+
 ---
 
 ## Adding New Agents

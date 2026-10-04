@@ -27,6 +27,7 @@ pub struct AgentEntity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Task {
     pub id: String,
     pub project_id: String,
@@ -48,6 +49,7 @@ pub struct NewTask {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Execution {
     pub id: String,
     pub task_id: Option<String>,
