@@ -1,5 +1,9 @@
 # AI Code Orchestrator — Windows V1
 
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=github-sponsors&logoColor=white)](https://github.com/sponsors/fvthakor)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Platform: Windows x64](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0078D6?logo=windows)](https://microsoft.com)
+
 A local orchestration desktop application for Windows 10/11 x64 that manages, connects, and coordinates local AI coding CLIs (**Claude Code**, **OpenAI Codex CLI**, **OpenCode**, and **Antigravity (AGY)**) within local project directories.
 
 Built with **Tauri v2**, **Rust**, **React**, **TypeScript**, **Tailwind CSS**, and authentic **Windows ConPTY** terminal streaming.
@@ -116,6 +120,16 @@ Detailed architectural and technical guides can be found in the [`docs/`](./docs
 - [Security Model & Path Guards](./docs/security.md)
 - [Git Operations & Worktree Workflow](./docs/git.md)
 - [Development & Testing Guide](./docs/development.md)
+
+---
+
+## Sponsorship & Support
+
+If you find AI Code Orchestrator useful for managing your local AI coding agents, consider supporting its development:
+
+- **GitHub Sponsors**: [sponsor @fvthakor](https://github.com/sponsors/fvthakor)
+
+Every contribution helps keep this project actively maintained and updated with new AI agent adapters.
 
 ---
 

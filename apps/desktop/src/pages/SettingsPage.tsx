@@ -3,6 +3,7 @@ import {
   Shield,
   Terminal,
   FolderLock,
+  Heart,
 } from "lucide-react";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { Input } from "../components/ui/Input";
@@ -137,6 +138,32 @@ export function SettingsPage() {
             <p className="text-xs text-slate-400 leading-relaxed">
               All project definitions, task records, and execution logs are stored locally inside
               embedded SQLite at <code className="text-indigo-300">%APPDATA%\com.ai.orchestrator.desktop\orchestrator.db</code>. No sensitive API keys or credentials are saved.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Sponsorship & Community Support */}
+        <Card className="border-pink-500/20 bg-pink-500/[0.03]">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center justify-between text-slate-200">
+              <span className="flex items-center space-x-2">
+                <Heart className="w-4 h-4 text-pink-400 fill-pink-400/20" />
+                <span>Support & Sponsorship</span>
+              </span>
+              <a
+                href="https://github.com/sponsors/fvthakor"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-pink-600 text-white font-medium text-xs hover:bg-pink-500 transition shadow-sm select-none"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                <span>Sponsor on GitHub</span>
+              </a>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              AI Code Orchestrator is open-source and free for developers. If this tool saves you time or boosts your workflow, consider sponsoring the project on GitHub to support active development, bug fixes, and new AI agent adapters.
             </p>
           </CardContent>
         </Card>

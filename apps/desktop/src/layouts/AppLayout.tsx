@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ShieldCheck,
   FolderGit2,
+  Heart,
 } from "lucide-react";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useTerminalStore } from "../stores/useTerminalStore";
@@ -224,6 +225,18 @@ export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps)
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Guarded</span>
             </div>
+
+            {/* Sponsor Button */}
+            <a
+              href="https://github.com/sponsors/fvthakor"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-pink-500/10 border border-pink-500/20 text-xs text-pink-300 hover:bg-pink-500/20 hover:border-pink-500/40 transition select-none cursor-pointer"
+              title="Sponsor this project on GitHub Sponsors"
+            >
+              <Heart className="w-3.5 h-3.5 text-pink-400 fill-pink-400/30" />
+              <span className="font-medium hidden sm:inline">Sponsor</span>
+            </a>
 
             {/* Create Task Button */}
             <Button
