@@ -3,6 +3,7 @@ pub mod database;
 pub mod filesystem;
 pub mod project;
 pub mod execution;
+pub mod agents;
 
 #[tauri::command]
 fn ping() -> &'static str {
