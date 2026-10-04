@@ -40,7 +40,7 @@ export function GitInitCard({ projectId, projectName, projectPath }: GitInitCard
   };
 
   return (
-    <Card className="border-indigo-500/30 bg-slate-900/90 shadow-md">
+    <Card className="border-indigo-500/30 bg-slate-900/90 shadow-md h-full flex flex-col justify-between">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center justify-between text-slate-100">
           <span className="flex items-center space-x-2">
@@ -52,7 +52,7 @@ export function GitInitCard({ projectId, projectName, projectPath }: GitInitCard
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 text-xs">
+      <CardContent className="space-y-4 text-xs flex-1 flex flex-col justify-between">
         <p className="text-slate-400 leading-relaxed">
           <span className="font-medium text-slate-200">{projectName}</span>{" "}
           {projectPath && <span className="font-mono text-[11px] text-slate-500 block truncate mt-0.5 mb-1">{projectPath}</span>}

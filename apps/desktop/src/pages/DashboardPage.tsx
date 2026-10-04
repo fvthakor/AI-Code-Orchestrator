@@ -340,58 +340,97 @@ export function DashboardPage({ onNavigate, onOpenNewTask }: DashboardPageProps)
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Plan Manager */}
-            <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider">
-                  Plan Manager
-                </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 font-mono">
-                  Phase 1
-                </span>
-              </div>
-              <div className="font-semibold text-xs text-slate-200 font-mono">
-                {globalTeamConfig.planManagerAgentId || "Unassigned"}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                Fallback: {globalTeamConfig.planManagerFallbackAgentId || "None"}
-              </div>
-            </div>
+            {(() => {
+              const agentsList = globalTeamConfig.planManagerAgents || [];
+              const primary = agentsList[0] || globalTeamConfig.planManagerAgentId || "Unassigned";
+              const fallbacks = agentsList.slice(1);
+              return (
+                <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider">
+                      Plan Manager
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 font-mono">
+                      Phase 1
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold">
+                      #1 Primary
+                    </span>
+                    <span className="font-semibold text-xs text-slate-200 font-mono">{primary}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">
+                    Fallback:{" "}
+                    {fallbacks.length > 0
+                      ? fallbacks.join(" ➔ ")
+                      : globalTeamConfig.planManagerFallbackAgentId || "None"}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Developer */}
-            <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-emerald-300 uppercase tracking-wider">
-                  Developer
-                </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono">
-                  Phase 2
-                </span>
-              </div>
-              <div className="font-semibold text-xs text-slate-200 font-mono">
-                {globalTeamConfig.developerAgentId || "Unassigned"}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                Fallback: {globalTeamConfig.developerFallbackAgentId || "None"}
-              </div>
-            </div>
+            {(() => {
+              const agentsList = globalTeamConfig.developerAgents || [];
+              const primary = agentsList[0] || globalTeamConfig.developerAgentId || "Unassigned";
+              const fallbacks = agentsList.slice(1);
+              return (
+                <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-emerald-300 uppercase tracking-wider">
+                      Developer
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono">
+                      Phase 2
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
+                      #1 Primary
+                    </span>
+                    <span className="font-semibold text-xs text-slate-200 font-mono">{primary}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">
+                    Fallback:{" "}
+                    {fallbacks.length > 0
+                      ? fallbacks.join(" ➔ ")
+                      : globalTeamConfig.developerFallbackAgentId || "None"}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* QA Tester */}
-            <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider">
-                  QA Tester
-                </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">
-                  Phase 3
-                </span>
-              </div>
-              <div className="font-semibold text-xs text-slate-200 font-mono">
-                {globalTeamConfig.testerAgentId || "Unassigned"}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                Fallback: {globalTeamConfig.testerFallbackAgentId || "None"}
-              </div>
-            </div>
+            {(() => {
+              const agentsList = globalTeamConfig.testerAgents || [];
+              const primary = agentsList[0] || globalTeamConfig.testerAgentId || "Unassigned";
+              const fallbacks = agentsList.slice(1);
+              return (
+                <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider">
+                      QA Tester
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">
+                      Phase 3
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-semibold">
+                      #1 Primary
+                    </span>
+                    <span className="font-semibold text-xs text-slate-200 font-mono">{primary}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">
+                    Fallback:{" "}
+                    {fallbacks.length > 0
+                      ? fallbacks.join(" ➔ ")
+                      : globalTeamConfig.testerFallbackAgentId || "None"}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>
