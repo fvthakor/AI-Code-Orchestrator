@@ -1,10 +1,89 @@
+import { useState, useEffect } from "react";
+import { AppLayout, type NavPage } from "./layouts/AppLayout";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { TasksPage } from "./pages/TasksPage";
+import { AgentsPage } from "./pages/AgentsPage";
+import { ChangesPage } from "./pages/ChangesPage";
+import { ExecutionsPage } from "./pages/ExecutionsPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { NewTaskModal } from "./components/NewTaskModal";
+import { useProjectStore } from "./stores/useProjectStore";
+import { useAgentStore } from "./stores/useAgentStore";
+import { useTerminalStore } from "./stores/useTerminalStore";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+
 export default function App() {
+  const [currentPage, setCurrentPage] = useState<NavPage>("dashboard");
+  const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+
+  const { projects, currentProject, loadProjects, setCurrentProject } = useProjectStore();
+  const { detectAll } = useAgentStore();
+  const { openDrawer } = useTerminalStore();
+
+  // Load projects and detect CLI agents on startup
+  useEffect(() => {
+    loadProjects();
+    detectAll();
+  }, [loadProjects, detectAll]);
+
+  // If projects exist but none selected, set the first as default
+  useEffect(() => {
+    if (!currentProject && projects.length > 0) {
+      setCurrentProject(projects[0]);
+    }
+  }, [projects, currentProject, setCurrentProject]);
+
+  // Hook global keyboard shortcuts
+  useKeyboardShortcuts({
+    onOpenNewTaskModal: () => setIsNewTaskOpen(true),
+  });
+
+  const renderCurrentPage = () => {
+    switch (currentPage) {
+      case "dashboard":
+        return (
+          <DashboardPage
+            onNavigate={setCurrentPage}
+            onOpenNewTask={() => setIsNewTaskOpen(true)}
+          />
+        );
+      case "projects":
+        return <ProjectsPage onNavigate={setCurrentPage} />;
+      case "tasks":
+        return <TasksPage onOpenNewTask={() => setIsNewTaskOpen(true)} />;
+      case "agents":
+        return <AgentsPage />;
+      case "changes":
+        return <ChangesPage />;
+      case "executions":
+        return <ExecutionsPage />;
+      case "settings":
+        return <SettingsPage />;
+      default:
+        return (
+          <DashboardPage
+            onNavigate={setCurrentPage}
+            onOpenNewTask={() => setIsNewTaskOpen(true)}
+          />
+        );
+    }
+  };
+
   return (
-    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 items-center justify-center">
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">AI Code Orchestrator</h1>
-        <p className="text-sm text-slate-400">Windows Local Orchestration Core</p>
-      </div>
-    </div>
+    <>
+      <AppLayout currentPage={currentPage} onNavigate={setCurrentPage}>
+        {renderCurrentPage()}
+      </AppLayout>
+
+      <NewTaskModal
+        isOpen={isNewTaskOpen}
+        onClose={() => setIsNewTaskOpen(false)}
+        onTaskStarted={() => {
+          openDrawer();
+          setCurrentPage("tasks");
+        }}
+      />
+    </>
   );
 }
