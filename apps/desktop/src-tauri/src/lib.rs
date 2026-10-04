@@ -5,6 +5,7 @@ pub mod project;
 pub mod execution;
 pub mod agents;
 pub mod git;
+pub mod security;
 
 #[tauri::command]
 fn ping() -> &'static str {
