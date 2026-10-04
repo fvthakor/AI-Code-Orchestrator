@@ -424,8 +424,8 @@ impl DbManager {
         let is_greenfield_int = if w.is_greenfield { 1 } else { 0 };
 
         conn.execute(
-            "INSERT INTO team_workflows (id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, developer_agent_id, tester_agent_id, current_step_index, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10, ?11)",
-            params![id, w.project_id, w.title, w.goal, is_greenfield_int, phase, w.plan_manager_agent_id, w.developer_agent_id, w.tester_agent_id, now, now],
+            "INSERT INTO team_workflows (id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, plan_manager_fallback, developer_agent_id, developer_fallback, tester_agent_id, tester_fallback, current_step_index, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 0, ?13, ?14)",
+            params![id, w.project_id, w.title, w.goal, is_greenfield_int, phase, w.plan_manager_agent_id, w.plan_manager_fallback, w.developer_agent_id, w.developer_fallback, w.tester_agent_id, w.tester_fallback, now, now],
         )?;
 
         Ok(TeamWorkflow {
@@ -436,8 +436,11 @@ impl DbManager {
             is_greenfield: w.is_greenfield,
             phase,
             plan_manager_agent_id: w.plan_manager_agent_id,
+            plan_manager_fallback: w.plan_manager_fallback,
             developer_agent_id: w.developer_agent_id,
+            developer_fallback: w.developer_fallback,
             tester_agent_id: w.tester_agent_id,
+            tester_fallback: w.tester_fallback,
             branch_name: None,
             pr_url: None,
             pr_method: None,
@@ -451,7 +454,7 @@ impl DbManager {
     pub fn get_team_workflow_by_id(&self, id: &str) -> Result<Option<TeamWorkflow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, developer_agent_id, tester_agent_id, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows WHERE id = ?1"
+            "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, plan_manager_fallback, developer_agent_id, developer_fallback, tester_agent_id, tester_fallback, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows WHERE id = ?1"
         )?;
         let mut rows = stmt.query(params![id])?;
 
@@ -465,15 +468,18 @@ impl DbManager {
                 is_greenfield: is_greenfield_int != 0,
                 phase: row.get(5)?,
                 plan_manager_agent_id: row.get(6)?,
-                developer_agent_id: row.get(7)?,
-                tester_agent_id: row.get(8)?,
-                branch_name: row.get(9)?,
-                pr_url: row.get(10)?,
-                pr_method: row.get(11)?,
-                current_step_index: row.get(12)?,
-                created_at: row.get(13)?,
-                updated_at: row.get(14)?,
-                completed_at: row.get(15)?,
+                plan_manager_fallback: row.get(7)?,
+                developer_agent_id: row.get(8)?,
+                developer_fallback: row.get(9)?,
+                tester_agent_id: row.get(10)?,
+                tester_fallback: row.get(11)?,
+                branch_name: row.get(12)?,
+                pr_url: row.get(13)?,
+                pr_method: row.get(14)?,
+                current_step_index: row.get(15)?,
+                created_at: row.get(16)?,
+                updated_at: row.get(17)?,
+                completed_at: row.get(18)?,
             }))
         } else {
             Ok(None)
@@ -483,7 +489,7 @@ impl DbManager {
     pub fn list_team_workflows(&self, project_id: &str) -> Result<Vec<TeamWorkflow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, developer_agent_id, tester_agent_id, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows WHERE project_id = ?1 ORDER BY created_at DESC"
+            "SELECT id, project_id, title, goal, is_greenfield, phase, plan_manager_agent_id, plan_manager_fallback, developer_agent_id, developer_fallback, tester_agent_id, tester_fallback, branch_name, pr_url, pr_method, current_step_index, created_at, updated_at, completed_at FROM team_workflows WHERE project_id = ?1 ORDER BY created_at DESC"
         )?;
         let rows = stmt.query_map(params![project_id], |row| {
             let is_greenfield_int: i32 = row.get(4)?;
@@ -495,15 +501,18 @@ impl DbManager {
                 is_greenfield: is_greenfield_int != 0,
                 phase: row.get(5)?,
                 plan_manager_agent_id: row.get(6)?,
-                developer_agent_id: row.get(7)?,
-                tester_agent_id: row.get(8)?,
-                branch_name: row.get(9)?,
-                pr_url: row.get(10)?,
-                pr_method: row.get(11)?,
-                current_step_index: row.get(12)?,
-                created_at: row.get(13)?,
-                updated_at: row.get(14)?,
-                completed_at: row.get(15)?,
+                plan_manager_fallback: row.get(7)?,
+                developer_agent_id: row.get(8)?,
+                developer_fallback: row.get(9)?,
+                tester_agent_id: row.get(10)?,
+                tester_fallback: row.get(11)?,
+                branch_name: row.get(12)?,
+                pr_url: row.get(13)?,
+                pr_method: row.get(14)?,
+                current_step_index: row.get(15)?,
+                created_at: row.get(16)?,
+                updated_at: row.get(17)?,
+                completed_at: row.get(18)?,
             })
         })?;
 
@@ -531,8 +540,8 @@ impl DbManager {
         let status = "pending".to_string();
 
         conn.execute(
-            "INSERT INTO team_workflow_steps (id, workflow_id, step_number, title, description, assigned_role, assigned_agent_id, status, retry_count, test_command) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9)",
-            params![id, s.workflow_id, s.step_number, s.title, s.description, s.assigned_role, s.assigned_agent_id, status, s.test_command],
+            "INSERT INTO team_workflow_steps (id, workflow_id, step_number, title, description, assigned_role, assigned_agent_id, fallback_agent_used, status, retry_count, test_command) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)",
+            params![id, s.workflow_id, s.step_number, s.title, s.description, s.assigned_role, s.assigned_agent_id, s.fallback_agent_used, status, s.test_command],
         )?;
 
         Ok(TeamWorkflowStep {
@@ -543,6 +552,7 @@ impl DbManager {
             description: s.description,
             assigned_role: s.assigned_role,
             assigned_agent_id: s.assigned_agent_id,
+            fallback_agent_used: s.fallback_agent_used,
             status,
             retry_count: 0,
             test_command: s.test_command,
@@ -556,7 +566,7 @@ impl DbManager {
     pub fn list_team_workflow_steps(&self, workflow_id: &str) -> Result<Vec<TeamWorkflowStep>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, workflow_id, step_number, title, description, assigned_role, assigned_agent_id, status, retry_count, test_command, verification_report, error_log, started_at, completed_at FROM team_workflow_steps WHERE workflow_id = ?1 ORDER BY step_number ASC"
+            "SELECT id, workflow_id, step_number, title, description, assigned_role, assigned_agent_id, fallback_agent_used, status, retry_count, test_command, verification_report, error_log, started_at, completed_at FROM team_workflow_steps WHERE workflow_id = ?1 ORDER BY step_number ASC"
         )?;
         let rows = stmt.query_map(params![workflow_id], |row| {
             Ok(TeamWorkflowStep {
@@ -567,13 +577,14 @@ impl DbManager {
                 description: row.get(4)?,
                 assigned_role: row.get(5)?,
                 assigned_agent_id: row.get(6)?,
-                status: row.get(7)?,
-                retry_count: row.get(8)?,
-                test_command: row.get(9)?,
-                verification_report: row.get(10)?,
-                error_log: row.get(11)?,
-                started_at: row.get(12)?,
-                completed_at: row.get(13)?,
+                fallback_agent_used: row.get(7)?,
+                status: row.get(8)?,
+                retry_count: row.get(9)?,
+                test_command: row.get(10)?,
+                verification_report: row.get(11)?,
+                error_log: row.get(12)?,
+                started_at: row.get(13)?,
+                completed_at: row.get(14)?,
             })
         })?;
 
@@ -601,6 +612,22 @@ impl DbManager {
         )?;
         Ok(())
     }
+
+    pub fn update_team_workflow_step_fallback(
+        &self,
+        id: &str,
+        new_agent_id: &str,
+        fallback_agent_used: &str,
+        status: &str,
+        error_log: Option<&str>,
+    ) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE team_workflow_steps SET assigned_agent_id = ?1, fallback_agent_used = ?2, status = ?3, error_log = ?4 WHERE id = ?5",
+            params![new_agent_id, fallback_agent_used, status, error_log, id],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -624,12 +651,16 @@ mod tests {
             goal: "Add user login and signup".to_string(),
             is_greenfield: false,
             plan_manager_agent_id: "claude".to_string(),
+            plan_manager_fallback: Some("antigravity".to_string()),
             developer_agent_id: "codex".to_string(),
+            developer_fallback: Some("claude".to_string()),
             tester_agent_id: "antigravity".to_string(),
+            tester_fallback: Some("codex".to_string()),
         }).expect("failed to create team workflow");
 
         assert_eq!(workflow.title, "Build Authentication");
         assert_eq!(workflow.phase, "planning");
+        assert_eq!(workflow.developer_fallback, Some("claude".to_string()));
 
         let step1 = db.create_team_workflow_step(NewTeamWorkflowStep {
             workflow_id: workflow.id.clone(),
@@ -638,14 +669,25 @@ mod tests {
             description: "Create endpoint".to_string(),
             assigned_role: "developer".to_string(),
             assigned_agent_id: "codex".to_string(),
+            fallback_agent_used: None,
             test_command: Some("pnpm test".to_string()),
         }).expect("failed to create step");
 
         assert_eq!(step1.step_number, 1);
         assert_eq!(step1.status, "pending");
 
-        let steps = db.list_team_workflow_steps(&workflow.id).expect("failed to list steps");
-        assert_eq!(steps.len(), 1);
+        // Test fallback update
+        db.update_team_workflow_step_fallback(
+            &step1.id,
+            "claude",
+            "claude",
+            "pending",
+            Some("Tokens exhausted on codex. Switched to claude."),
+        ).expect("failed to update fallback");
+
+        let steps_after_fb = db.list_team_workflow_steps(&workflow.id).expect("failed to list steps");
+        assert_eq!(steps_after_fb[0].assigned_agent_id, "claude");
+        assert_eq!(steps_after_fb[0].fallback_agent_used, Some("claude".to_string()));
 
         db.update_team_workflow_step(
             &step1.id,

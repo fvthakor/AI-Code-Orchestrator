@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   FileCode,
   ArrowRight,
+  Zap,
 } from "lucide-react";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -19,7 +20,7 @@ interface TeamKanbanBoardProps {
 }
 
 export function TeamKanbanBoard({ onOpenPrModal }: TeamKanbanBoardProps) {
-  const { activeWorkflow, steps, advanceStep, retryStep } = useTeamStore();
+  const { activeWorkflow, steps, advanceStep, retryStep, triggerFallback } = useTeamStore();
   const { openDrawer, spawnSession } = useTerminalStore();
 
   if (!activeWorkflow) {
@@ -128,11 +129,23 @@ export function TeamKanbanBoard({ onOpenPrModal }: TeamKanbanBoardProps) {
                     </Badge>
                   </div>
 
-                  {step.retryCount > 0 && (
-                    <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                      Retry {step.retryCount}/3
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-1.5">
+                    {step.retryCount > 0 && (
+                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        Retry {step.retryCount}/3
+                      </span>
+                    )}
+
+                    {step.fallbackAgentUsed && (
+                      <span
+                        className="text-[10px] font-mono text-purple-300 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/30 flex items-center space-x-1"
+                        title={`Switched to backup agent: ${step.fallbackAgentUsed}`}
+                      >
+                        <Zap className="w-2.5 h-2.5 text-purple-400" />
+                        <span>{step.fallbackAgentUsed}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Title & Description */}
@@ -193,39 +206,64 @@ export function TeamKanbanBoard({ onOpenPrModal }: TeamKanbanBoardProps) {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-1.5">
                 {isCurrent && !isDone && (
                   <>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleFailStep(step)}
-                      className="text-[11px] h-7 px-2 text-rose-400 hover:text-rose-300"
+                      className="text-[10px] h-7 px-2 text-rose-400 hover:text-rose-300"
                     >
-                      Report QA Fail
+                      Fail
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => triggerFallback(step.id)}
+                      className="text-[10px] h-7 px-2 text-purple-300 hover:text-purple-200 border-purple-800/60 flex items-center space-x-1"
+                      title="Switch to configured backup agent if token quota is exhausted"
+                    >
+                      <Zap className="w-3 h-3 text-purple-400" />
+                      <span>Fallback</span>
                     </Button>
 
                     <Button
                       size="sm"
                       onClick={() => handleCompleteStep(step)}
-                      className="text-[11px] h-7 px-2.5 flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-500"
+                      className="text-[10px] h-7 px-2 flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-500"
                     >
-                      <span>Pass & Next</span>
+                      <span>Pass</span>
                       <ArrowRight className="w-3 h-3" />
                     </Button>
                   </>
                 )}
 
-                {isFailed && step.retryCount < 3 && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleRetryStep(step)}
-                    className="w-full text-xs h-7 text-amber-400 hover:text-amber-300 flex items-center justify-center space-x-1"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Auto-Fix & Retry ({step.retryCount}/3)</span>
-                  </Button>
+                {isFailed && (
+                  <div className="flex items-center space-x-1.5 w-full">
+                    {step.retryCount < 3 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRetryStep(step)}
+                        className="flex-1 text-xs h-7 text-amber-400 hover:text-amber-300 flex items-center justify-center space-x-1"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Retry ({step.retryCount}/3)</span>
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => triggerFallback(step.id)}
+                      className="text-xs h-7 px-2 text-purple-300 hover:text-purple-200 border-purple-800/60 flex items-center justify-center space-x-1"
+                      title="Switch to backup agent due to token limit"
+                    >
+                      <Zap className="w-3 h-3 text-purple-400" />
+                      <span>Token Fallback</span>
+                    </Button>
+                  </div>
                 )}
 
                 {isDone && (

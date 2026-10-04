@@ -18,7 +18,7 @@ export function RoleSelector() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Plan Manager */}
-        <div className="space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-indigo-300">📋 Plan Manager</span>
             <span className="text-[10px] text-slate-500">Architect</span>
@@ -26,21 +26,42 @@ export function RoleSelector() {
           <p className="text-[11px] text-slate-400">
             Breaks project goals into sequential atomic tasks & reviews diffs.
           </p>
-          <select
-            value={config.planManagerAgentId}
-            onChange={(e) => setConfig({ planManagerAgentId: e.target.value })}
-            className="w-full px-2.5 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 mt-1"
-          >
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.status})
-              </option>
-            ))}
-          </select>
+          <div>
+            <span className="text-[10px] text-slate-400">Primary:</span>
+            <select
+              value={config.planManagerAgentId}
+              onChange={(e) => setConfig({ planManagerAgentId: e.target.value })}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 mt-0.5"
+            >
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.status})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="pt-1.5 border-t border-slate-900">
+            <div className="flex items-center justify-between text-[10px] text-slate-500">
+              <span>Token Fallback:</span>
+              <span className="text-[9px] text-amber-400/80">Rate-limit backup</span>
+            </div>
+            <select
+              value={config.planManagerFallbackAgentId || ""}
+              onChange={(e) => setConfig({ planManagerFallbackAgentId: e.target.value || undefined })}
+              className="w-full px-2 py-1 text-[11px] bg-slate-900/90 border border-slate-800 rounded text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 mt-0.5"
+            >
+              <option value="">None (No fallback)</option>
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.status})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Developer */}
-        <div className="space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-emerald-300">💻 Developer</span>
             <span className="text-[10px] text-slate-500">Builder</span>
@@ -48,21 +69,42 @@ export function RoleSelector() {
           <p className="text-[11px] text-slate-400">
             Implements code changes for one scoped task at a time.
           </p>
-          <select
-            value={config.developerAgentId}
-            onChange={(e) => setConfig({ developerAgentId: e.target.value })}
-            className="w-full px-2.5 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 mt-1"
-          >
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.status})
-              </option>
-            ))}
-          </select>
+          <div>
+            <span className="text-[10px] text-slate-400">Primary:</span>
+            <select
+              value={config.developerAgentId}
+              onChange={(e) => setConfig({ developerAgentId: e.target.value })}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 mt-0.5"
+            >
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.status})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="pt-1.5 border-t border-slate-900">
+            <div className="flex items-center justify-between text-[10px] text-slate-500">
+              <span>Token Fallback:</span>
+              <span className="text-[9px] text-amber-400/80">Rate-limit backup</span>
+            </div>
+            <select
+              value={config.developerFallbackAgentId || ""}
+              onChange={(e) => setConfig({ developerFallbackAgentId: e.target.value || undefined })}
+              className="w-full px-2 py-1 text-[11px] bg-slate-900/90 border border-slate-800 rounded text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 mt-0.5"
+            >
+              <option value="">None (No fallback)</option>
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.status})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* QA Tester */}
-        <div className="space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-cyan-300">🧪 QA Tester</span>
             <span className="text-[10px] text-slate-500">Verification</span>
@@ -70,17 +112,38 @@ export function RoleSelector() {
           <p className="text-[11px] text-slate-400">
             Executes builds, linters & tests to verify zero regressions.
           </p>
-          <select
-            value={config.testerAgentId}
-            onChange={(e) => setConfig({ testerAgentId: e.target.value })}
-            className="w-full px-2.5 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 mt-1"
-          >
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.status})
-              </option>
-            ))}
-          </select>
+          <div>
+            <span className="text-[10px] text-slate-400">Primary:</span>
+            <select
+              value={config.testerAgentId}
+              onChange={(e) => setConfig({ testerAgentId: e.target.value })}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 mt-0.5"
+            >
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.status})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="pt-1.5 border-t border-slate-900">
+            <div className="flex items-center justify-between text-[10px] text-slate-500">
+              <span>Token Fallback:</span>
+              <span className="text-[9px] text-amber-400/80">Rate-limit backup</span>
+            </div>
+            <select
+              value={config.testerFallbackAgentId || ""}
+              onChange={(e) => setConfig({ testerFallbackAgentId: e.target.value || undefined })}
+              className="w-full px-2 py-1 text-[11px] bg-slate-900/90 border border-slate-800 rounded text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500 mt-0.5"
+            >
+              <option value="">None (No fallback)</option>
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.status})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

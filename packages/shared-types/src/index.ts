@@ -147,8 +147,11 @@ export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipp
 
 export interface TeamConfig {
   planManagerAgentId: string;
+  planManagerFallbackAgentId?: string;
   developerAgentId: string;
+  developerFallbackAgentId?: string;
   testerAgentId: string;
+  testerFallbackAgentId?: string;
   maxRetries: number;
   autoPr: boolean;
   githubRepoUrl?: string;
@@ -162,6 +165,7 @@ export interface TeamWorkflowStep {
   description: string;
   assignedRole: TeamRole;
   assignedAgentId: string;
+  fallbackAgentUsed?: string;
   status: StepStatus;
   retryCount: number;
   testCommand?: string;
@@ -179,8 +183,11 @@ export interface TeamWorkflow {
   isGreenfield: boolean;
   phase: WorkflowPhase;
   planManagerAgentId: string;
+  planManagerFallback?: string;
   developerAgentId: string;
+  developerFallback?: string;
   testerAgentId: string;
+  testerFallback?: string;
   branchName?: string;
   prUrl?: string;
   prMethod?: 'api' | 'cli' | 'web';

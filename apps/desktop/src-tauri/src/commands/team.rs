@@ -10,8 +10,11 @@ pub async fn team_start_workflow(
     goal: String,
     is_greenfield: bool,
     plan_manager_agent_id: String,
+    plan_manager_fallback: Option<String>,
     developer_agent_id: String,
+    developer_fallback: Option<String>,
     tester_agent_id: String,
+    tester_fallback: Option<String>,
     db: State<'_, DbManager>,
 ) -> Result<TeamWorkflow, String> {
     TeamCoordinator::start_workflow(
@@ -21,8 +24,11 @@ pub async fn team_start_workflow(
         goal,
         is_greenfield,
         plan_manager_agent_id,
+        plan_manager_fallback,
         developer_agent_id,
+        developer_fallback,
         tester_agent_id,
+        tester_fallback,
     )
 }
 
@@ -68,6 +74,7 @@ pub async fn team_add_step(
         description,
         assigned_role,
         assigned_agent_id,
+        fallback_agent_used: None,
         test_command,
     }).map_err(|e| e.to_string())
 }
@@ -98,4 +105,13 @@ pub async fn team_retry_step(
     db: State<'_, DbManager>,
 ) -> Result<TeamWorkflowStep, String> {
     TeamCoordinator::retry_step(&db, &workflow_id, &step_id)
+}
+
+#[tauri::command]
+pub async fn team_trigger_fallback(
+    workflow_id: String,
+    step_id: String,
+    db: State<'_, DbManager>,
+) -> Result<TeamWorkflowStep, String> {
+    TeamCoordinator::trigger_fallback(&db, &workflow_id, &step_id)
 }

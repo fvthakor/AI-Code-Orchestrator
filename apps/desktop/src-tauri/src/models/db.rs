@@ -99,8 +99,11 @@ pub struct TeamWorkflow {
     pub is_greenfield: bool,
     pub phase: String,
     pub plan_manager_agent_id: String,
+    pub plan_manager_fallback: Option<String>,
     pub developer_agent_id: String,
+    pub developer_fallback: Option<String>,
     pub tester_agent_id: String,
+    pub tester_fallback: Option<String>,
     pub branch_name: Option<String>,
     pub pr_url: Option<String>,
     pub pr_method: Option<String>,
@@ -111,14 +114,18 @@ pub struct TeamWorkflow {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewTeamWorkflow {
     pub project_id: String,
     pub title: String,
     pub goal: String,
     pub is_greenfield: bool,
     pub plan_manager_agent_id: String,
+    pub plan_manager_fallback: Option<String>,
     pub developer_agent_id: String,
+    pub developer_fallback: Option<String>,
     pub tester_agent_id: String,
+    pub tester_fallback: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -131,6 +138,7 @@ pub struct TeamWorkflowStep {
     pub description: String,
     pub assigned_role: String,
     pub assigned_agent_id: String,
+    pub fallback_agent_used: Option<String>,
     pub status: String,
     pub retry_count: i32,
     pub test_command: Option<String>,
@@ -141,6 +149,7 @@ pub struct TeamWorkflowStep {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewTeamWorkflowStep {
     pub workflow_id: String,
     pub step_number: i32,
@@ -148,6 +157,7 @@ pub struct NewTeamWorkflowStep {
     pub description: String,
     pub assigned_role: String,
     pub assigned_agent_id: String,
+    pub fallback_agent_used: Option<String>,
     pub test_command: Option<String>,
 }
 

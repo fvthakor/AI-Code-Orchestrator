@@ -192,8 +192,11 @@ export const IpcService = {
     goal: string;
     isGreenfield: boolean;
     planManagerAgentId: string;
+    planManagerFallback?: string;
     developerAgentId: string;
+    developerFallback?: string;
     testerAgentId: string;
+    testerFallback?: string;
   }): Promise<TeamWorkflow> {
     return await invoke<TeamWorkflow>("team_start_workflow", params);
   },
@@ -234,6 +237,10 @@ export const IpcService = {
 
   async teamRetryStep(workflowId: string, stepId: string): Promise<TeamWorkflowStep> {
     return await invoke<TeamWorkflowStep>("team_retry_step", { workflowId, stepId });
+  },
+
+  async teamTriggerFallback(workflowId: string, stepId: string): Promise<TeamWorkflowStep> {
+    return await invoke<TeamWorkflowStep>("team_trigger_fallback", { workflowId, stepId });
   },
 
   // Security

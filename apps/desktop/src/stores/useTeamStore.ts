@@ -42,6 +42,7 @@ interface TeamState {
     errorLog?: string;
   }) => Promise<void>;
   retryStep: (stepId: string) => Promise<void>;
+  triggerFallback: (stepId: string) => Promise<void>;
   createPr: (params: {
     projectId: string;
     branchName: string;
@@ -60,8 +61,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   steps: [],
   config: {
     planManagerAgentId: "claude",
+    planManagerFallbackAgentId: "antigravity",
     developerAgentId: "codex",
+    developerFallbackAgentId: "claude",
     testerAgentId: "antigravity",
+    testerFallbackAgentId: "codex",
     maxRetries: 3,
     autoPr: true,
   },
@@ -109,8 +113,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         goal,
         isGreenfield,
         planManagerAgentId: config.planManagerAgentId,
+        planManagerFallback: config.planManagerFallbackAgentId,
         developerAgentId: config.developerAgentId,
+        developerFallback: config.developerFallbackAgentId,
         testerAgentId: config.testerAgentId,
+        testerFallback: config.testerFallbackAgentId,
       });
 
       // Automatically initialize default steps based on project mode
@@ -216,6 +223,19 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     if (!activeWorkflow) return;
     try {
       await IpcService.teamRetryStep(activeWorkflow.id, stepId);
+      const steps = await IpcService.teamListWorkflowSteps(activeWorkflow.id);
+      const updatedWf = await IpcService.teamGetWorkflow(activeWorkflow.id);
+      set({ activeWorkflow: updatedWf, steps });
+    } catch (err: unknown) {
+      set({ error: String(err) });
+    }
+  },
+
+  triggerFallback: async (stepId: string) => {
+    const { activeWorkflow } = get();
+    if (!activeWorkflow) return;
+    try {
+      await IpcService.teamTriggerFallback(activeWorkflow.id, stepId);
       const steps = await IpcService.teamListWorkflowSteps(activeWorkflow.id);
       const updatedWf = await IpcService.teamGetWorkflow(activeWorkflow.id);
       set({ activeWorkflow: updatedWf, steps });
