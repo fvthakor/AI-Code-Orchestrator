@@ -16,6 +16,7 @@ interface TerminalState {
   openAgentStream: (executionId?: string) => void;
   openShellStream: () => void;
   spawnSession: (projectId?: string) => Promise<string | null>;
+  launchCliLogin: (agentId: string, projectId?: string) => Promise<void>;
   writeToTerminal: (data: string) => Promise<void>;
   resizeTerminal: (cols: number, rows: number) => Promise<void>;
   killSession: () => Promise<void>;
@@ -62,6 +63,29 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     } catch (err: unknown) {
       set({ error: String(err), isSpawning: false });
       return null;
+    }
+  },
+
+  launchCliLogin: async (agentId: string, projectId?: string) => {
+    let command = "claude login\r\n";
+    if (agentId === "codex") {
+      command = "codex login\r\n";
+    } else if (agentId === "antigravity") {
+      command = "agy login\r\n";
+    } else if (agentId === "opencode") {
+      command = "opencode auth login\r\n";
+    }
+
+    set({ isOpen: true, activeTab: "shell" });
+
+    let sid = get().activeSessionId;
+    if (!sid) {
+      sid = await get().spawnSession(projectId);
+    }
+    // Give powershell ConPTY a brief moment to show prompt if just spawned
+    await new Promise((r) => setTimeout(r, 600));
+    if (get().activeSessionId) {
+      await get().writeToTerminal(command);
     }
   },
 

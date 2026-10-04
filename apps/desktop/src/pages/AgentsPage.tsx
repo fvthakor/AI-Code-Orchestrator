@@ -10,8 +10,10 @@ import {
   Settings2,
   Save,
   X,
+  LogIn,
 } from "lucide-react";
 import { useAgentStore } from "../stores/useAgentStore";
+import { useTerminalStore } from "../stores/useTerminalStore";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Input } from "../components/ui/Input";
@@ -212,16 +214,41 @@ export function AgentsPage() {
                   </div>
                 </div>
 
+                {agent.statusMessage && (
+                  <div className={`p-2 rounded text-xs ${
+                    agent.status === "auth_required" || !agent.authConfigured
+                      ? "bg-amber-500/10 border border-amber-500/20 text-amber-300"
+                      : "bg-slate-950 text-slate-400 border border-slate-800"
+                  }`}>
+                    {agent.statusMessage}
+                  </div>
+                )}
+
                 <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={isTesting}
-                    onClick={() => handleTest(agent.id)}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap h-7 px-2"
-                  >
-                    {isTesting ? "Testing..." : "Test Connection"}
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isTesting}
+                      onClick={() => handleTest(agent.id)}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap h-7 px-2"
+                    >
+                      {isTesting ? "Testing..." : "Test Connection"}
+                    </Button>
+
+                    {(!agent.authConfigured || agent.status === "auth_required") && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => useTerminalStore.getState().launchCliLogin(agent.id)}
+                        className="text-xs text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 flex items-center space-x-1 whitespace-nowrap h-7 px-2"
+                        title={`Open terminal to run ${agent.id} login`}
+                      >
+                        <LogIn className="w-3.5 h-3.5" />
+                        <span>Login CLI</span>
+                      </Button>
+                    )}
+                  </div>
 
                   <Button
                     variant="outline"

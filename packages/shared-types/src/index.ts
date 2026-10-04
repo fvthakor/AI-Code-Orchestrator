@@ -1,6 +1,6 @@
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type ExecutionStatus = 'running' | 'completed' | 'failed' | 'cancelled';
-export type AgentStatus = 'connected' | 'not_detected' | 'disabled' | 'error';
+export type AgentStatus = 'connected' | 'not_detected' | 'disabled' | 'error' | 'auth_required';
 export type PolicyRiskLevel = 'safe' | 'low' | 'medium' | 'high' | 'blocked';
 export type PolicyDecision = 'allowed' | 'requires_approval' | 'blocked';
 

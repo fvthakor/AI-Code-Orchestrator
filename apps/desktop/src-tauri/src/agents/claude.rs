@@ -102,8 +102,8 @@ impl AgentAdapter for ClaudeAdapter {
         Ok(ExecutionCommand {
             program: cli_path.to_path_buf(),
             args: vec![
-                "--print".to_string(),
                 "--dangerously-skip-permissions".to_string(),
+                "-p".to_string(),
                 prompt,
             ],
         })

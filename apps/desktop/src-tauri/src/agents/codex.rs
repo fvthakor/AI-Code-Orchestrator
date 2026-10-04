@@ -96,7 +96,11 @@ impl AgentAdapter for CodexAdapter {
 
         Ok(ExecutionCommand {
             program: cli_path.to_path_buf(),
-            args: vec![prompt],
+            args: vec![
+                "exec".to_string(),
+                "--dangerously-bypass-approvals-and-sandbox".to_string(),
+                prompt,
+            ],
         })
     }
 }

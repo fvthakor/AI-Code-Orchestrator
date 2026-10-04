@@ -133,10 +133,12 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
       get().appendLog(`Phase 1: Dispatching project planning to Lead Architect (${planManager})...`);
 
       const planTaskTitle = `[Plan Manager] Project Blueprint & Architecture: ${title}`;
-      const planTaskDesc = `You are the Lead Software Architect and Plan Manager.\nAnalyze the project goal and define the complete architecture, directory layout, and implementation requirements:\n\nGoal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Detailed technical roadmap, schema definitions, and implementation guidelines.`;
+      const planTaskDesc = `You are the Lead Software Architect and Plan Manager.\nAnalyze the project goal and define the complete architecture, directory layout, and implementation requirements:\n\nGoal: ${title}\n\nRequirements:\n${description}\n\nProduce a list of 3-5 concrete, priority-ordered implementation tasks to build this project.\nAt the very end of your response, output a JSON array of the tasks in this exact schema so they can be added to the project board:\n\`\`\`json\n[\n  {\n    "title": "[Phase 1: Architecture] Set up models, types and core configuration",\n    "description": "Details of what to implement...",\n    "priority": "high"\n  },\n  {\n    "title": "[Phase 2: Core Engine] Implement main logic and operations",\n    "description": "Details of what to implement...",\n    "priority": "high"\n  },\n  {\n    "title": "[Phase 3: QA Verification] Unit tests, edge cases and validation",\n    "description": "Details of what to test...",\n    "priority": "medium"\n  }\n]\n\`\`\``;
 
       const planTask = await useTaskStore.getState().createTask(projectId, planTaskTitle, planTaskDesc, planManager);
       await useTaskStore.getState().loadTasks(projectId);
+
+      let finalPlanLogs = "";
 
       if (planTask) {
         try {
@@ -155,16 +157,26 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
               }
             }
 
+            finalPlanLogs = useExecutionStore.getState().terminalLogs[planExecId] || "";
+
             // Inspect logs for auth failure
-            const planLogs = useExecutionStore.getState().terminalLogs[planExecId] || "";
-            if (planLogs.includes("Failed to authenticate") || planLogs.includes("OAuth session expired")) {
-              get().appendLog(`⚠️ ${planManager} authentication expired.`);
+            const isAuthExpired =
+              finalPlanLogs.includes("Failed to authenticate") ||
+              finalPlanLogs.includes("OAuth session expired") ||
+              finalPlanLogs.includes("access token could not be refreshed") ||
+              finalPlanLogs.includes("Please log out and sign in again") ||
+              finalPlanLogs.includes("auth_required");
+
+            if (isAuthExpired) {
+              get().appendLog(`⚠️ ${planManager.toUpperCase()} login expired! Automatically opening terminal to run CLI login...`);
+              void useTerminalStore.getState().launchCliLogin(planManager, projectId);
+
               const fallbackAgent =
                 teamConfig.planManagerAgents?.find((a) => a !== planManager) ||
                 (planManager !== "antigravity" ? "antigravity" : null);
 
               if (fallbackAgent) {
-                get().appendLog(`🔄 Falling back to ${fallbackAgent.toUpperCase()} for Project Planning...`);
+                get().appendLog(`🔄 Automatically falling back to ${fallbackAgent.toUpperCase()} for Project Planning...`);
                 set({
                   statusMessage: `Falling back to ${fallbackAgent} for Project Planning...`,
                 });
@@ -187,6 +199,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
                       const active = await useExecutionStore.getState().loadActiveAgentTask();
                       if (!active) fbDone = true;
                     }
+                    finalPlanLogs = useExecutionStore.getState().terminalLogs[fbExecId] || "";
                   }
                   await useTaskStore.getState().updateStatus(fbTask.id, "completed");
                 }
@@ -200,36 +213,58 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
       }
 
       get().appendLog(`✓ Plan Manager finished project architectural roadmap.`);
-      get().appendLog(`Phase 2: Adding planned tasks one-by-one to project task board...`);
 
-      // Step 2: Add planned tasks one by one to the project
-      const taskBlueprints = [
-        {
-          title: `[Core Architecture] ${title} - Data Models & Storage`,
-          description: `Goal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Implement core business logic, database schemas, types, interfaces, and state management models without regressions.`,
-        },
-        {
-          title: `[Functional Engine] ${title} - Business Logic & Flow`,
-          description: `Implement the operational features and algorithms required for: ${title}.\n\nRequirements:\n${description}\n\nDeliverable: Fully integrated functional logic, error handling, slot validation, and state transitions.`,
-        },
-        {
-          title: `[QA Verification] Unit tests & edge case validation for ${title}`,
-          description: `Write and execute comprehensive unit tests covering all edge cases, failure states, and validations for: ${title}.`,
-        },
-      ];
+      // Parse dynamic tasks from Plan Manager output if present
+      let plannedTasks: { title: string; description: string; priority?: string }[] = [];
+      const jsonMatch = finalPlanLogs.match(/```(?:json)?\s*(\[\s*\{[\s\S]*?\}\s*\])\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            plannedTasks = parsed.map((item: Record<string, unknown>, idx: number) => ({
+              title: String(item.title || `[Task ${idx + 1}] Implementation for ${title}`),
+              description: String(item.description || description),
+              priority: String(item.priority || "high"),
+            }));
+          }
+        } catch {
+          // Fall back to default blueprints below
+        }
+      }
 
-      set({ totalTasks: taskBlueprints.length });
+      if (plannedTasks.length === 0) {
+        plannedTasks = [
+          {
+            title: `[Core Architecture] ${title} - Data Models & Storage`,
+            description: `Goal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Implement core business logic, database schemas, types, interfaces, and state management models without regressions.`,
+            priority: "high",
+          },
+          {
+            title: `[Functional Engine] ${title} - Business Logic & Flow`,
+            description: `Implement the operational features and algorithms required for: ${title}.\n\nRequirements:\n${description}\n\nDeliverable: Fully integrated functional logic, error handling, slot validation, and state transitions.`,
+            priority: "high",
+          },
+          {
+            title: `[QA Verification] Unit tests & edge case validation for ${title}`,
+            description: `Write and execute comprehensive unit tests covering all edge cases, failure states, and validations for: ${title}.`,
+            priority: "medium",
+          },
+        ];
+      }
+
+      get().appendLog(`Phase 2: Adding ${plannedTasks.length} planned tasks one-by-one to project task board...`);
+      set({ totalTasks: plannedTasks.length });
 
       const createdTasks = [];
-      for (let i = 0; i < taskBlueprints.length; i++) {
-        const bp = taskBlueprints[i];
+      for (let i = 0; i < plannedTasks.length; i++) {
+        const bp = plannedTasks[i];
         const task = await useTaskStore.getState().createTask(projectId, bp.title, bp.description, developer);
         if (task) {
           createdTasks.push(task);
           get().appendLog(`✓ Plan Manager added Task #${i + 1}: "${bp.title}"`);
           // Live reload task list so tasks appear one by one in the project task board
           await useTaskStore.getState().loadTasks(projectId);
-          await new Promise((r) => setTimeout(r, 600));
+          await new Promise((r) => setTimeout(r, 700));
         }
       }
 
@@ -291,6 +326,19 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
           if (!activeTask) {
             isDone = true;
           }
+        }
+
+        const devLogs = useExecutionStore.getState().terminalLogs[execId] || "";
+        const isDevAuthExpired =
+          devLogs.includes("Failed to authenticate") ||
+          devLogs.includes("OAuth session expired") ||
+          devLogs.includes("access token could not be refreshed") ||
+          devLogs.includes("Please log out and sign in again") ||
+          devLogs.includes("auth_required");
+
+        if (isDevAuthExpired) {
+          get().appendLog(`⚠️ ${developer.toUpperCase()} login expired during task execution! Automatically launching terminal CLI login...`);
+          void useTerminalStore.getState().launchCliLogin(developer, projectId);
         }
 
         get().appendLog(`✓ Developer (${developer}) completed Task #${i + 1}.`);

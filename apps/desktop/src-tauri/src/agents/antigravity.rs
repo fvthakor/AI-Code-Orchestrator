@@ -107,8 +107,8 @@ impl AgentAdapter for AntigravityAdapter {
             vec!["chat".to_string(), prompt]
         } else {
             vec![
-                "--print".to_string(),
                 "--dangerously-skip-permissions".to_string(),
+                "--print".to_string(),
                 prompt,
             ]
         };
