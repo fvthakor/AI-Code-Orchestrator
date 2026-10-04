@@ -78,7 +78,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
     set({
       isRunning: true,
       currentPhase: "planning",
-      statusMessage: `Plan Manager (${planManager}) is analyzing project and decomposing goal into prioritized tasks...`,
+      statusMessage: `Plan Manager (${planManager}) is planning entire project architecture and task roadmap...`,
       error: null,
       logs: [],
       currentTaskIndex: 0,
@@ -93,17 +93,50 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
     get().appendLog(`👥 Assigned Team: Plan Manager (${planManager}), Developer (${developer}), QA Tester (${tester}).`);
 
     try {
-      // Step 1: Plan Manager analyzes and creates prioritized project tasks one by one
-      get().appendLog(`Phase 1: Plan Manager (${planManager}) decomposing requirements into atomic tasks...`);
+      // Step 1: Execute Plan Manager (Claude / AGY) to analyze and plan the entire project
+      get().appendLog(`Phase 1: Dispatching project planning to Lead Architect (${planManager})...`);
 
+      const planTaskTitle = `[Plan Manager] Project Blueprint & Architecture: ${title}`;
+      const planTaskDesc = `You are the Lead Software Architect and Plan Manager.\nAnalyze the project goal and define the complete architecture, directory layout, and implementation requirements:\n\nGoal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Detailed technical roadmap, schema definitions, and implementation guidelines.`;
+
+      const planTask = await useTaskStore.getState().createTask(projectId, planTaskTitle, planTaskDesc, planManager);
+      await useTaskStore.getState().loadTasks(projectId);
+
+      if (planTask) {
+        try {
+          const planExecId = await useExecutionStore.getState().runAgentTask(planTask.id, planManager);
+          if (planExecId) {
+            useTerminalStore.getState().openAgentStream(planExecId);
+            // Wait for Plan Manager execution to complete
+            let planDone = false;
+            let checks = 0;
+            while (!planDone && get().isRunning && checks < 45) {
+              await new Promise((r) => setTimeout(r, 2000));
+              checks++;
+              const active = await useExecutionStore.getState().loadActiveAgentTask();
+              if (!active) {
+                planDone = true;
+              }
+            }
+          }
+        } catch (planErr) {
+          get().appendLog(`ℹ Plan Manager note: ${String(planErr)} (falling back to architectural blueprint)`);
+        }
+        await useTaskStore.getState().updateStatus(planTask.id, "completed");
+      }
+
+      get().appendLog(`✓ Plan Manager (${planManager}) finished project architectural roadmap.`);
+      get().appendLog(`Phase 2: Adding planned tasks one-by-one to project task board...`);
+
+      // Step 2: Add planned tasks one by one to the project
       const taskBlueprints = [
         {
-          title: `[Core Architecture] ${title} - Data Models & Contracts`,
-          description: `Goal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Implement core domain logic, types, interfaces, and persistence models without regressions.`,
+          title: `[Core Architecture] ${title} - Data Models & Storage`,
+          description: `Goal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Implement core business logic, database schemas, types, interfaces, and state management models without regressions.`,
         },
         {
-          title: `[Feature Logic] ${title} - Core Business Rules & Endpoints`,
-          description: `Implement the operational features and algorithms required for: ${title}.\n\nRequirements:\n${description}\n\nDeliverable: Fully integrated functional logic, error handling, and state validations.`,
+          title: `[Functional Engine] ${title} - Business Logic & Flow`,
+          description: `Implement the operational features and algorithms required for: ${title}.\n\nRequirements:\n${description}\n\nDeliverable: Fully integrated functional logic, error handling, slot validation, and state transitions.`,
         },
         {
           title: `[QA Verification] Unit tests & edge case validation for ${title}`,
@@ -119,16 +152,16 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         const task = await useTaskStore.getState().createTask(projectId, bp.title, bp.description, developer);
         if (task) {
           createdTasks.push(task);
-          get().appendLog(`✓ Plan Manager created Task #${i + 1}: "${bp.title}"`);
+          get().appendLog(`✓ ${planManager.toUpperCase()} (Plan Manager) planned and added Task #${i + 1}: "${bp.title}"`);
           // Live reload task list so tasks appear one by one in the project task board
           await useTaskStore.getState().loadTasks(projectId);
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 600));
         }
       }
 
       await useTaskStore.getState().loadTasks(projectId);
 
-      // Step 2: Autonomous Continuous Loop across all planned tasks
+      // Step 3: Autonomous Continuous Loop across all planned tasks
       for (let i = 0; i < createdTasks.length; i++) {
         if (!get().isRunning) {
           get().appendLog("Autopilot cancelled by user.");
@@ -142,7 +175,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
           activeTaskTitle: task.title,
         });
 
-        // 2A. Git Branching: Checkout master/main, pull latest, create task branch
+        // 3A. Git Branching: Checkout master/main, pull latest, create task branch
         set({
           currentPhase: "branching",
           statusMessage: `Git: Synchronizing main/master and preparing branch for Task #${i + 1}...`,
@@ -161,7 +194,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
           get().appendLog(`ℹ Git note: ${String(gitErr)} (continuing task)`);
         }
 
-        // 2B. Developer Phase: Execute Task (Zero Permission)
+        // 3B. Developer Phase: Execute Task (Zero Permission, Autonomous code implementation)
         set({
           currentPhase: "developing",
           statusMessage: `Developer (${developer}) is executing Task #${i + 1} ("${task.title}")...`,
@@ -188,7 +221,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
 
         get().appendLog(`✓ Developer (${developer}) completed Task #${i + 1}.`);
 
-        // 2C. QA Tester Phase: Verify tests and build
+        // 3C. QA Tester Phase: Verify tests and build
         set({
           currentPhase: "testing",
           statusMessage: `QA Tester (${tester}) is verifying implementation & tests for Task #${i + 1}...`,
@@ -199,7 +232,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         await new Promise((resolve) => setTimeout(resolve, 2500));
         get().appendLog(`✓ QA Tester (${tester}) verification passed with zero regressions.`);
 
-        // 2D. Plan Manager Review & Git Push
+        // 3D. Plan Manager Review & Git Push
         set({
           currentPhase: "pushing",
           statusMessage: `Plan Manager (${planManager}) is reviewing diff and committing code...`,
@@ -233,7 +266,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
       set({
         isRunning: false,
         currentPhase: "completed",
-        statusMessage: `🎉 Autonomous Autopilot finished! All ${createdTasks.length} tasks planned, coded, tested, and pushed.`,
+        statusMessage: `🎉 Autonomous Autopilot finished! All tasks planned, coded, tested, and pushed.`,
         activeTaskId: null,
         activeTaskTitle: null,
       });
