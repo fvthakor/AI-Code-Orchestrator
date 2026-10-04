@@ -49,10 +49,22 @@ impl ProcessManager {
             })
             .map_err(|e| format!("Failed to open PTY: {}", e))?;
 
-        let mut cmd = CommandBuilder::new(program);
-        for arg in args {
-            cmd.arg(*arg);
-        }
+        let is_cmd_or_bat = program.to_lowercase().ends_with(".cmd") || program.to_lowercase().ends_with(".bat");
+        let mut cmd = if is_cmd_or_bat {
+            let mut c = CommandBuilder::new("cmd.exe");
+            c.arg("/c");
+            c.arg(program);
+            for arg in args {
+                c.arg(*arg);
+            }
+            c
+        } else {
+            let mut c = CommandBuilder::new(program);
+            for arg in args {
+                c.arg(*arg);
+            }
+            c
+        };
         cmd.cwd(working_dir);
 
         let child = pair

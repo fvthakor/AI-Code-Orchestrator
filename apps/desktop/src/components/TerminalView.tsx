@@ -2,10 +2,11 @@ import React, { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { Play, Square, Trash2 } from "lucide-react";
+import { Play, Square, Trash2, Bot, Terminal as TerminalIcon } from "lucide-react";
 import { Button } from "./ui/Button";
 import { IpcService } from "../services/ipc";
 import { useTerminalStore } from "../stores/useTerminalStore";
+import { useExecutionStore } from "../stores/useExecutionStore";
 
 export interface TerminalViewProps {
   sessionId?: string | null;
@@ -18,7 +19,7 @@ export interface TerminalViewProps {
 export const TerminalView: React.FC<TerminalViewProps> = ({
   sessionId,
   executionId,
-  title = "Terminal Session",
+  title,
   className,
   interactive = true,
 }) => {
@@ -27,10 +28,30 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   const fitAddonRef = useRef<FitAddon | null>(null);
 
   const activeSessionId = useTerminalStore((s) => s.activeSessionId);
+  const activeExecutionIdFromStore = useTerminalStore((s) => s.activeExecutionId);
+  const activeAgentTask = useExecutionStore((s) => s.activeAgentTask);
+  const activeExecutionIdFromExecutionStore = useExecutionStore((s) => s.activeExecutionId);
+  const terminalLogs = useExecutionStore((s) => s.terminalLogs);
   const spawnSession = useTerminalStore((s) => s.spawnSession);
   const killSession = useTerminalStore((s) => s.killSession);
 
-  const targetId = sessionId || executionId || activeSessionId;
+  // Resolve target ID based on explicit prop or active state
+  const effectiveExecutionId =
+    executionId ||
+    activeExecutionIdFromStore ||
+    activeAgentTask?.executionId ||
+    activeExecutionIdFromExecutionStore;
+
+  const targetId = sessionId || effectiveExecutionId || activeSessionId;
+  const isExecutionStream = Boolean(targetId && (targetId === effectiveExecutionId || executionId));
+
+  const displayTitle =
+    title ||
+    (isExecutionStream
+      ? activeAgentTask
+        ? `Agent Stream: ${activeAgentTask.agentId} (${activeAgentTask.title})`
+        : `Agent Execution Stream (${targetId?.slice(0, 8)})`
+      : "PowerShell ConPTY Shell");
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -64,8 +85,19 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Handle user keyboard input
-    if (interactive && targetId) {
+    // Load any existing buffered logs
+    if (targetId && terminalLogs[targetId]) {
+      term.write(terminalLogs[targetId]);
+    } else if (isExecutionStream) {
+      term.writeln(`\x1b[36m[AI Orchestrator]\x1b[0m Monitoring active agent execution stream...`);
+      if (activeAgentTask) {
+        term.writeln(`\x1b[90mAgent: ${activeAgentTask.agentId} | Project: ${activeAgentTask.projectName}\x1b[0m`);
+        term.writeln(`\x1b[90mTask: ${activeAgentTask.title}\x1b[0m\r\n`);
+      }
+    }
+
+    // Handle user keyboard input for interactive sessions
+    if (interactive && targetId && !isExecutionStream) {
       term.onData((data) => {
         IpcService.terminalWrite(targetId, data).catch(() => {});
       });
@@ -75,7 +107,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     const handleResize = () => {
       try {
         fitAddon.fit();
-        if (targetId) {
+        if (targetId && !isExecutionStream) {
           IpcService.terminalResize(targetId, term.cols, term.rows).catch(() => {});
         }
       } catch {
@@ -89,7 +121,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       window.removeEventListener("resize", handleResize);
       term.dispose();
     };
-  }, [interactive, targetId]);
+  }, [interactive, targetId, isExecutionStream]);
 
   // Subscribe to real-time output
   useEffect(() => {
@@ -121,8 +153,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       {/* Terminal Title Bar */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-xs text-slate-300">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-mono font-medium">{title}</span>
+          {isExecutionStream ? (
+            <Bot className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+          ) : (
+            <TerminalIcon className="w-3.5 h-3.5 text-indigo-400" />
+          )}
+          <span className="font-mono font-medium truncate max-w-lg">{displayTitle}</span>
           {targetId && (
             <span className="text-[10px] text-slate-500 font-mono">
               ({targetId.slice(0, 8)})
@@ -133,7 +169,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           <Button variant="ghost" size="sm" onClick={handleClear} title="Clear terminal">
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
-          {interactive && (
+          {!isExecutionStream && interactive && (
             <>
               <Button variant="ghost" size="sm" onClick={handleRestart} title="Restart session">
                 <Play className="w-3.5 h-3.5" />

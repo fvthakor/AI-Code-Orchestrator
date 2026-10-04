@@ -20,9 +20,11 @@ import { useTaskStore } from "../stores/useTaskStore";
 import { useExecutionStore } from "../stores/useExecutionStore";
 import { useTerminalStore } from "../stores/useTerminalStore";
 import { useTeamStore } from "../stores/useTeamStore";
+import { useAutopilotStore } from "../stores/useAutopilotStore";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
+import { Square } from "lucide-react";
 import { IpcService } from "../services/ipc";
 import type { NavPage } from "../layouts/AppLayout";
 import type { GlobalStats } from "@ai-orchestrator/shared-types";
@@ -44,8 +46,18 @@ export function DashboardPage({ onNavigate, onOpenNewTask }: DashboardPageProps)
     loadActiveAgentTask,
     runAgentTask,
   } = useExecutionStore();
-  const { openDrawer } = useTerminalStore();
+  const { openDrawer, openAgentStream } = useTerminalStore();
   const { config: globalTeamConfig } = useTeamStore();
+  const {
+    isRunning: isAutopilotRunning,
+    currentPhase: autopilotPhase,
+    statusMessage: autopilotStatus,
+    activeTaskTitle: autopilotTaskTitle,
+    activeBranchName: autopilotBranch,
+    currentTaskIndex: autopilotTaskIndex,
+    totalTasks: autopilotTotalTasks,
+    stopAutopilot,
+  } = useAutopilotStore();
 
   const [stats, setStats] = useState<GlobalStats | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -121,8 +133,71 @@ export function DashboardPage({ onNavigate, onOpenNewTask }: DashboardPageProps)
         </div>
       </div>
 
-      {/* Live Active Execution Monitor Widget */}
-      {activeAgentTask ? (
+      {/* Live Active Execution / Autopilot Monitor Widget */}
+      {isAutopilotRunning ? (
+        <div className="p-5 rounded-xl bg-gradient-to-r from-indigo-950/90 via-slate-900 to-slate-900 border border-indigo-500/60 shadow-lg shadow-indigo-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="flex items-center space-x-2.5">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              </span>
+              <span className="text-xs font-semibold tracking-wider uppercase text-emerald-400">
+                Autonomous Autopilot Active
+              </span>
+              <Badge variant="outline" className="font-mono text-indigo-300 border-indigo-500/40 text-[10px] uppercase">
+                {autopilotPhase}
+              </Badge>
+              {autopilotTotalTasks > 0 && (
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Task {autopilotTaskIndex} of {autopilotTotalTasks}
+                </span>
+              )}
+            </div>
+            <h3 className="text-base font-bold text-slate-100">
+              {autopilotTaskTitle || autopilotStatus}
+            </h3>
+            <p className="text-xs text-slate-400 flex items-center space-x-2">
+              <span className="text-slate-300">{autopilotStatus}</span>
+              {autopilotBranch && (
+                <>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-indigo-400 font-mono text-[11px] flex items-center">
+                    <GitBranch className="w-3 h-3 mr-1" />
+                    {autopilotBranch}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-2.5 shrink-0">
+            <Button
+              onClick={() => {
+                if (activeAgentTask?.executionId) {
+                  openAgentStream(activeAgentTask.executionId);
+                } else {
+                  openAgentStream();
+                }
+              }}
+              size="sm"
+              className="flex items-center space-x-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white"
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>View Terminal Stream</span>
+            </Button>
+            <Button
+              onClick={stopAutopilot}
+              size="sm"
+              variant="outline"
+              className="flex items-center space-x-1 text-xs text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
+            >
+              <Square className="w-3 h-3" />
+              <span>Stop</span>
+            </Button>
+          </div>
+        </div>
+      ) : activeAgentTask ? (
         <div className="p-5 rounded-xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-900 border border-indigo-500/50 shadow-lg shadow-indigo-500/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center space-x-2.5">
@@ -150,7 +225,13 @@ export function DashboardPage({ onNavigate, onOpenNewTask }: DashboardPageProps)
 
           <div className="flex items-center space-x-2.5 shrink-0">
             <Button
-              onClick={openDrawer}
+              onClick={() => {
+                if (activeAgentTask?.executionId) {
+                  openAgentStream(activeAgentTask.executionId);
+                } else {
+                  openAgentStream();
+                }
+              }}
               size="sm"
               className="flex items-center space-x-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white"
             >

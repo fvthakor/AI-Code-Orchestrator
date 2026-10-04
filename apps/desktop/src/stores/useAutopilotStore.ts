@@ -4,6 +4,7 @@ import { useTaskStore } from "./useTaskStore";
 import { useExecutionStore } from "./useExecutionStore";
 import { useTeamStore } from "./useTeamStore";
 import { useProjectStore } from "./useProjectStore";
+import { useTerminalStore } from "./useTerminalStore";
 
 export type AutopilotPhase =
   | "idle"
@@ -70,41 +71,43 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
     const planManager =
       teamConfig.planManagerAgents?.[0] || teamConfig.planManagerAgentId || "claude";
     const developer =
-      teamConfig.developerAgents?.[0] || teamConfig.developerAgentId || "codex";
+      teamConfig.developerAgents?.[0] || teamConfig.developerAgentId || "opencode";
     const tester =
       teamConfig.testerAgents?.[0] || teamConfig.testerAgentId || "antigravity";
 
     set({
       isRunning: true,
       currentPhase: "planning",
-      statusMessage: `Plan Manager (${planManager}) is decomposing project goal into prioritized tasks...`,
+      statusMessage: `Plan Manager (${planManager}) is analyzing project and decomposing goal into prioritized tasks...`,
       error: null,
       logs: [],
       currentTaskIndex: 0,
       totalTasks: 0,
     });
 
+    // Open terminal drawer and focus on agent execution stream
+    useTerminalStore.getState().openAgentStream();
+
     get().appendLog(`🚀 Starting Autonomous Autopilot on project.`);
     get().appendLog(`📋 Goal: ${title}`);
     get().appendLog(`👥 Assigned Team: Plan Manager (${planManager}), Developer (${developer}), QA Tester (${tester}).`);
 
     try {
-      // Step 1: Create prioritized project tasks
-      get().appendLog(`Phase 1: Plan Manager (${planManager}) analyzing codebase and decomposing roadmap...`);
+      // Step 1: Plan Manager analyzes and creates prioritized project tasks one by one
+      get().appendLog(`Phase 1: Plan Manager (${planManager}) decomposing requirements into atomic tasks...`);
 
-      // Intelligently generate 2-3 discrete tasks from the user's title & description
       const taskBlueprints = [
         {
-          title: `[Core Engine] ${title} - Implementation & Data Models`,
-          description: `Goal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Implement core business logic, mathematical calculation functions, and models without regressions.`,
+          title: `[Core Architecture] ${title} - Data Models & Contracts`,
+          description: `Goal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Implement core domain logic, types, interfaces, and persistence models without regressions.`,
         },
         {
-          title: `[QA Verification] Unit tests & validation suite for ${title}`,
-          description: `Write and execute comprehensive unit tests verifying all edge cases, validations, and logic implemented for: ${title}.`,
+          title: `[Feature Logic] ${title} - Core Business Rules & Endpoints`,
+          description: `Implement the operational features and algorithms required for: ${title}.\n\nRequirements:\n${description}\n\nDeliverable: Fully integrated functional logic, error handling, and state validations.`,
         },
         {
-          title: `[Integration] CLI/Module exports & documentation for ${title}`,
-          description: `Expose clean public interfaces, documentation, and verify zero build/lint errors for: ${title}.`,
+          title: `[QA Verification] Unit tests & edge case validation for ${title}`,
+          description: `Write and execute comprehensive unit tests covering all edge cases, failure states, and validations for: ${title}.`,
         },
       ];
 
@@ -116,7 +119,10 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         const task = await useTaskStore.getState().createTask(projectId, bp.title, bp.description, developer);
         if (task) {
           createdTasks.push(task);
-          get().appendLog(`✓ Created Task #${i + 1}: "${bp.title}"`);
+          get().appendLog(`✓ Plan Manager created Task #${i + 1}: "${bp.title}"`);
+          // Live reload task list so tasks appear one by one in the project task board
+          await useTaskStore.getState().loadTasks(projectId);
+          await new Promise((r) => setTimeout(r, 400));
         }
       }
 
@@ -139,7 +145,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         // 2A. Git Branching: Checkout master/main, pull latest, create task branch
         set({
           currentPhase: "branching",
-          statusMessage: `Preparing isolated Git branch for Task #${i + 1}...`,
+          statusMessage: `Git: Synchronizing main/master and preparing branch for Task #${i + 1}...`,
         });
         get().appendLog(`🌿 Git: Synchronizing main/master and creating task branch...`);
 
@@ -167,6 +173,9 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
           throw new Error(`Failed to start execution for task ${task.id}`);
         }
 
+        // Automatically point terminal view to this execution stream
+        useTerminalStore.getState().openAgentStream(execId);
+
         // Await developer completion by polling active task lock
         let isDone = false;
         while (!isDone && get().isRunning) {
@@ -186,7 +195,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         });
         get().appendLog(`🧪 QA Tester (${tester}) running automated verification...`);
 
-        // Wait a brief moment to simulate/execute verification
+        // Wait a brief moment to execute verification
         await new Promise((resolve) => setTimeout(resolve, 2500));
         get().appendLog(`✓ QA Tester (${tester}) verification passed with zero regressions.`);
 

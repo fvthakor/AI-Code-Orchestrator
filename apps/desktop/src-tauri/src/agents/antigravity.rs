@@ -106,7 +106,11 @@ impl AgentAdapter for AntigravityAdapter {
         let args = if file_stem.contains("antigravity") {
             vec!["chat".to_string(), prompt]
         } else {
-            vec!["--print".to_string(), prompt]
+            vec![
+                "--print".to_string(),
+                "--dangerously-skip-permissions".to_string(),
+                prompt,
+            ]
         };
 
         Ok(ExecutionCommand {

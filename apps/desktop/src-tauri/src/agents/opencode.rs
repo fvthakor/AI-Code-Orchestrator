@@ -87,7 +87,7 @@ impl AgentAdapter for OpenCodeAdapter {
 
         Ok(ExecutionCommand {
             program: cli_path.to_path_buf(),
-            args: vec!["run".to_string(), prompt],
+            args: vec!["run".to_string(), "--auto".to_string(), prompt],
         })
     }
 }

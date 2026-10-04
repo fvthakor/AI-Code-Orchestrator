@@ -3,6 +3,8 @@ import { IpcService } from "../services/ipc";
 
 interface TerminalState {
   activeSessionId: string | null;
+  activeExecutionId: string | null;
+  activeTab: "agent" | "shell";
   isOpen: boolean;
   isSpawning: boolean;
   error: string | null;
@@ -10,6 +12,9 @@ interface TerminalState {
   toggleDrawer: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
+  setTab: (tab: "agent" | "shell") => void;
+  openAgentStream: (executionId?: string) => void;
+  openShellStream: () => void;
   spawnSession: (projectId?: string) => Promise<string | null>;
   writeToTerminal: (data: string) => Promise<void>;
   resizeTerminal: (cols: number, rows: number) => Promise<void>;
@@ -19,6 +24,8 @@ interface TerminalState {
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
   activeSessionId: null,
+  activeExecutionId: null,
+  activeTab: "agent",
   isOpen: false,
   isSpawning: false,
   error: null,
@@ -26,6 +33,20 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   toggleDrawer: () => set((s) => ({ isOpen: !s.isOpen })),
   openDrawer: () => set({ isOpen: true }),
   closeDrawer: () => set({ isOpen: false }),
+
+  setTab: (tab: "agent" | "shell") => set({ activeTab: tab }),
+
+  openAgentStream: (executionId?: string) => {
+    set((s) => ({
+      isOpen: true,
+      activeTab: "agent",
+      activeExecutionId: executionId !== undefined ? executionId : s.activeExecutionId,
+    }));
+  },
+
+  openShellStream: () => {
+    set({ isOpen: true, activeTab: "shell" });
+  },
 
   spawnSession: async (projectId) => {
     try {
@@ -36,7 +57,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       }
 
       const sessionId = await IpcService.terminalSpawn(projectId);
-      set({ activeSessionId: sessionId, isSpawning: false, isOpen: true });
+      set({ activeSessionId: sessionId, isSpawning: false, isOpen: true, activeTab: "shell" });
       return sessionId;
     } catch (err: unknown) {
       set({ error: String(err), isSpawning: false });

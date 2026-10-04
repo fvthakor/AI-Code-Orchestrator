@@ -21,6 +21,7 @@ import {
 import { useProjectStore } from "../stores/useProjectStore";
 import { useTerminalStore } from "../stores/useTerminalStore";
 import { useAgentStore } from "../stores/useAgentStore";
+import { useExecutionStore } from "../stores/useExecutionStore";
 import { TerminalView } from "../components/TerminalView";
 import { CommandPalette } from "../components/CommandPalette";
 import { NewTaskModal } from "../components/NewTaskModal";
@@ -46,7 +47,15 @@ interface AppLayoutProps {
 export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps) {
   const { currentProject, selectDirectoryAndOpen } = useProjectStore();
   const { agents } = useAgentStore();
-  const { isOpen: isTerminalOpen, toggleDrawer, activeSessionId } = useTerminalStore();
+  const {
+    isOpen: isTerminalOpen,
+    toggleDrawer,
+    activeSessionId,
+    activeTab,
+    setTab,
+    activeExecutionId,
+  } = useTerminalStore();
+  const { activeAgentTask } = useExecutionStore();
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
@@ -280,20 +289,48 @@ export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps)
         >
           {/* Terminal Drawer Header Bar */}
           <div
-            className="h-9 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none text-xs text-slate-300 hover:bg-slate-900 transition"
+            className="h-9 px-4 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none text-xs text-slate-300 hover:bg-slate-900 transition"
             onClick={toggleDrawer}
           >
-            <div className="flex items-center space-x-2.5">
-              <Terminal className="w-4 h-4 text-cyan-400" />
-              <span className="font-semibold text-slate-200">Terminal</span>
-              <span className="text-slate-500 font-mono text-[11px]">
-                PowerShell (Windows ConPTY)
-              </span>
-              {activeSessionId && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-                  Live
-                </span>
-              )}
+            <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+              <Terminal className="w-4 h-4 text-cyan-400 mr-1" />
+
+              {/* Tab: Agent Execution Stream */}
+              <button
+                onClick={() => setTab("agent")}
+                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded text-xs font-medium transition ${
+                  activeTab === "agent"
+                    ? "bg-slate-800 text-slate-100 shadow-sm border border-slate-700"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Agent Stream</span>
+                {activeAgentTask && (
+                  <span className="relative flex h-2 w-2 ml-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                )}
+              </button>
+
+              {/* Tab: PowerShell Shell */}
+              <button
+                onClick={() => setTab("shell")}
+                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded text-xs font-medium transition ${
+                  activeTab === "shell"
+                    ? "bg-slate-800 text-slate-100 shadow-sm border border-slate-700"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                }`}
+              >
+                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                <span>PowerShell ConPTY</span>
+                {activeSessionId && (
+                  <span className="px-1 py-0.2 rounded text-[9px] font-mono bg-cyan-500/20 text-cyan-300">
+                    Live
+                  </span>
+                )}
+              </button>
             </div>
 
             <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
@@ -328,7 +365,21 @@ export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps)
           {/* Terminal Content (Mount only when open or keep active) */}
           {isTerminalOpen && (
             <div className="flex-1 min-h-0 bg-slate-950">
-              <TerminalView />
+              {activeTab === "agent" ? (
+                <TerminalView
+                  executionId={activeAgentTask?.executionId || activeExecutionId}
+                  title={
+                    activeAgentTask
+                      ? `Agent Stream: ${activeAgentTask.agentId} - ${activeAgentTask.title}`
+                      : "Agent Execution Stream"
+                  }
+                />
+              ) : (
+                <TerminalView
+                  sessionId={activeSessionId}
+                  title="PowerShell (Windows ConPTY)"
+                />
+              )}
             </div>
           )}
         </div>
