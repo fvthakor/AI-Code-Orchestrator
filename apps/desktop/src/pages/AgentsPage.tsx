@@ -78,7 +78,7 @@ export function AgentsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-in fade-in">
+    <div className="space-y-6 max-w-6xl mx-auto pb-12 animate-in fade-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
@@ -127,106 +127,116 @@ export function AgentsPage() {
         </div>
       )}
 
-      {/* Agent Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {agents.map((agent) => {
-          const isInstalled = agent.status === "connected";
-          const isTesting = testingId === agent.id;
+      {/* Agent Cards with 3 inline per row, remaining moved below, with side-scroll support */}
+      <div className="overflow-x-auto pb-4">
+        <div className="grid grid-cols-3 gap-5 min-w-[880px]">
+          {agents.map((agent) => {
+            const isInstalled = agent.status === "connected";
+            const isTesting = testingId === agent.id;
 
-          return (
-            <div
-              key={agent.id}
-              className="p-5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-4 hover:border-slate-700 transition"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                      <Bot className="w-5 h-5" />
+            return (
+              <div
+                key={agent.id}
+                className="p-5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-4 hover:border-slate-700 transition"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                        <Bot className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm text-slate-100 truncate whitespace-nowrap">
+                          {agent.name}
+                        </h3>
+                        <span className="text-[10px] text-slate-500 font-mono">ID: {agent.id}</span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-slate-100">{agent.name}</h3>
-                      <span className="text-[10px] text-slate-500 font-mono">ID: {agent.id}</span>
+                    <Badge variant={isInstalled ? "success" : "warning"} className="text-[10px] shrink-0">
+                      {agent.status}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
+                      Executable Location
+                    </span>
+                    <div
+                      className="text-xs font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 overflow-x-auto whitespace-nowrap select-all scrollbar-thin"
+                      title={agent.executablePath || "Not Found"}
+                    >
+                      {agent.executablePath || "Executable not detected in PATH"}
                     </div>
                   </div>
-                  <Badge variant={isInstalled ? "success" : "warning"} className="text-[10px]">
-                    {agent.status}
-                  </Badge>
+
+                  {agent.version && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400 whitespace-nowrap">Detected Version:</span>
+                      <span className="font-mono text-slate-200 truncate ml-2 font-medium">v{agent.version}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-800/80">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+                      Capabilities
+                    </span>
+                    <div className="space-y-2 text-xs text-slate-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center space-x-2 whitespace-nowrap">
+                          <FileCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Code & File Editing</span>
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-400 shrink-0">
+                          {agent.capabilities?.fileEditing ? "Supported" : "No"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center space-x-2 whitespace-nowrap">
+                          <Terminal className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span>ConPTY Terminal</span>
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-400 shrink-0">
+                          {agent.capabilities?.terminal ? "Supported" : "No"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center space-x-2 whitespace-nowrap">
+                          <FolderGit2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          <span>Git Operations & Diff</span>
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-400 shrink-0">
+                          {agent.capabilities?.git ? "Supported" : "No"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 pt-1">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
-                    Executable Location
-                  </span>
-                  <p
-                    className="text-xs font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 truncate"
-                    title={agent.executablePath || "Not Found"}
+                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isTesting}
+                    onClick={() => handleTest(agent.id)}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap h-7 px-2"
                   >
-                    {agent.executablePath || "Executable not detected in PATH"}
-                  </p>
-                </div>
+                    {isTesting ? "Testing..." : "Test Connection"}
+                  </Button>
 
-                {agent.version && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Detected Version:</span>
-                    <span className="font-mono text-slate-200">v{agent.version}</span>
-                  </div>
-                )}
-
-                <div className="pt-2 border-t border-slate-800/80">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">
-                    Capabilities
-                  </span>
-                  <div className="space-y-1.5 text-xs text-slate-300">
-                    <div className="flex items-center space-x-2">
-                      <FileCode className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Code & File Editing:</span>
-                      <span className="font-mono text-[11px] text-slate-400 ml-auto">
-                        {agent.capabilities?.fileEditing ? "Supported" : "No"}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>ConPTY Shell Commands:</span>
-                      <span className="font-mono text-[11px] text-slate-400 ml-auto">
-                        {agent.capabilities?.terminal ? "Supported" : "No"}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <FolderGit2 className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Git Operations & Diff:</span>
-                      <span className="font-mono text-[11px] text-slate-400 ml-auto">
-                        {agent.capabilities?.git ? "Supported" : "No"}
-                      </span>
-                    </div>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openSettings(agent)}
+                    className="text-xs flex items-center space-x-1 whitespace-nowrap h-7 px-2.5"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                    <span>Configure</span>
+                  </Button>
                 </div>
               </div>
-
-              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isTesting}
-                  onClick={() => handleTest(agent.id)}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  {isTesting ? "Testing..." : "Test Connection"}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openSettings(agent)}
-                  className="text-xs flex items-center space-x-1"
-                >
-                  <Settings2 className="w-3.5 h-3.5" />
-                  <span>Configure</span>
-                </Button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Edit Agent Settings Modal */}

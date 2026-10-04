@@ -308,77 +308,83 @@ export function DashboardPage({ onNavigate, onOpenNewTask }: DashboardPageProps)
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {agents.map((agent) => {
-            const isInstalled = agent.status === "connected";
-            const isTesting = testingAgentId === agent.id;
+        <div className="overflow-x-auto pb-4">
+          <div className="grid grid-cols-3 gap-4 min-w-[860px]">
+            {agents.map((agent) => {
+              const isInstalled = agent.status === "connected";
+              const isTesting = testingAgentId === agent.id;
 
-            return (
-              <div
-                key={agent.id}
-                className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-semibold text-sm text-slate-200">{agent.name}</span>
-                    <Badge variant={isInstalled ? "success" : "warning"} className="text-[10px]">
-                      {agent.status}
-                    </Badge>
+              return (
+                <div
+                  key={agent.id}
+                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 flex flex-col justify-between hover:border-slate-700 transition"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <span className="font-semibold text-sm text-slate-200 truncate whitespace-nowrap">{agent.name}</span>
+                      <Badge variant={isInstalled ? "success" : "warning"} className="text-[10px] shrink-0">
+                        {agent.status}
+                      </Badge>
+                    </div>
+
+                    <div
+                      className="text-[11px] font-mono text-slate-400 bg-slate-950 p-1.5 rounded border border-slate-800/80 overflow-x-auto whitespace-nowrap select-all"
+                      title={agent.executablePath || "Not in PATH"}
+                    >
+                      {agent.executablePath || "Executable not detected in PATH"}
+                    </div>
+
+                    {agent.version && (
+                      <div className="text-[11px] text-slate-400 mt-1.5 font-mono flex items-center justify-between">
+                        <span className="text-slate-500 whitespace-nowrap">Detected:</span>
+                        <span className="font-semibold text-slate-300">v{agent.version}</span>
+                      </div>
+                    )}
+
+                    {agent.capabilities && (
+                      <div className="flex flex-wrap gap-1 mt-2.5">
+                        {agent.capabilities.fileEditing && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 whitespace-nowrap">
+                            Edit Files
+                          </span>
+                        )}
+                        {agent.capabilities.terminal && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 whitespace-nowrap">
+                            Terminal
+                          </span>
+                        )}
+                        {agent.capabilities.git && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 whitespace-nowrap">
+                            Git
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <p className="text-[11px] font-mono text-slate-400 truncate">
-                    {agent.executablePath || "Not in PATH"}
-                  </p>
-
-                  {agent.version && (
-                    <div className="text-[11px] text-slate-500 mt-1 font-mono">
-                      v{agent.version}
-                    </div>
-                  )}
-
-                  {agent.capabilities && (
-                    <div className="flex flex-wrap gap-1 mt-2.5">
-                      {agent.capabilities.fileEditing && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                          Edit Files
-                        </span>
-                      )}
-                      {agent.capabilities.terminal && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                          Terminal
-                        </span>
-                      )}
-                      {agent.capabilities.git && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                          Git
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isTesting}
+                      onClick={() => handleTestAgent(agent.id)}
+                      className="text-xs h-7 px-2 text-indigo-400 hover:text-indigo-300 whitespace-nowrap"
+                    >
+                      {isTesting ? "Testing..." : "Test Connection"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onNavigate("agents")}
+                      className="text-xs h-7 px-2 whitespace-nowrap"
+                    >
+                      Configure
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={isTesting}
-                    onClick={() => handleTestAgent(agent.id)}
-                    className="text-xs h-7 px-2 text-indigo-400 hover:text-indigo-300"
-                  >
-                    {isTesting ? "Testing..." : "Test Connection"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onNavigate("agents")}
-                    className="text-xs h-7 px-2"
-                  >
-                    Configure
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
