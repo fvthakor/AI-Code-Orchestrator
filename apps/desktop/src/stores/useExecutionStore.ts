@@ -14,6 +14,7 @@ interface ExecutionState {
   loadExecutions: (projectId: string) => Promise<void>;
   loadAllExecutions: (limit?: number) => Promise<void>;
   loadActiveAgentTask: () => Promise<ActiveAgentTaskInfo | null>;
+  clearActiveLock: () => Promise<void>;
   runAgentTask: (taskId: string, agentId: string) => Promise<string | null>;
   runProjectCommand: (projectId: string, command: string) => Promise<string | null>;
   appendLog: (executionId: string, chunk: string) => void;
@@ -56,6 +57,15 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
       return activeAgentTask;
     } catch {
       return null;
+    }
+  },
+
+  clearActiveLock: async () => {
+    try {
+      await IpcService.executionClearActiveLock();
+      set({ activeAgentTask: null });
+    } catch {
+      // ignore
     }
   },
 

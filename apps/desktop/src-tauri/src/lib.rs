@@ -20,7 +20,7 @@ use security::policy::PolicyEngine;
 use commands::projects::{project_open, project_analyze, project_list, project_delete, stats_get_global};
 use commands::agents::{agent_detect_all, agent_save_config, agent_test_connection};
 use commands::tasks::{task_create, task_list, task_list_all, task_get, task_update_status, task_delete};
-use commands::executions::{execution_list, execution_list_all, execution_get, execution_get_active_agent_task, execution_run_agent, execution_run_command};
+use commands::executions::{execution_list, execution_list_all, execution_get, execution_get_active_agent_task, execution_clear_active_lock, execution_run_agent, execution_run_command};
 use commands::terminal::{terminal_spawn, terminal_write, terminal_resize, terminal_kill};
 use commands::git::{git_status, git_diff, git_log, git_commit, git_init_or_link, git_create_branch, git_push, git_create_pr, git_prepare_task_branch, git_commit_and_push};
 use commands::security::security_evaluate;
@@ -73,6 +73,7 @@ pub fn run() {
             execution_list_all,
             execution_get,
             execution_get_active_agent_task,
+            execution_clear_active_lock,
             execution_run_agent,
             execution_run_command,
             // Terminal

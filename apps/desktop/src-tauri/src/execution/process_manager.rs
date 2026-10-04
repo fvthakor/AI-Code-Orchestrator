@@ -73,7 +73,7 @@ impl ProcessManager {
         };
         cmd.cwd(clean_wd);
 
-        let child = pair
+        let mut child = pair
             .slave
             .spawn_command(cmd)
             .map_err(|e| format!("Failed to spawn command '{}': {}", program, e))?;
@@ -112,10 +112,11 @@ impl ProcessManager {
         // Spawn background reader thread
         let session_id_clone = session_id.clone();
         let sessions_map = self.sessions.clone();
+        let running_reader = running.clone();
 
         thread::spawn(move || {
             let mut buf = [0u8; 4096];
-            while running.load(Ordering::SeqCst) {
+            while running_reader.load(Ordering::SeqCst) {
                 match reader.read(&mut buf) {
                     Ok(0) => break,
                     Ok(n) => {
@@ -126,9 +127,22 @@ impl ProcessManager {
                 }
             }
 
-            running.store(false, Ordering::SeqCst);
+            running_reader.store(false, Ordering::SeqCst);
             let mut map = sessions_map.lock().unwrap();
             map.remove(&session_id_clone);
+        });
+
+        // Spawn process exit watcher thread to ensure session termination when child exits
+        let running_watcher = running.clone();
+        let sessions_watcher = self.sessions.clone();
+        let session_id_watcher = session_id.clone();
+
+        thread::spawn(move || {
+            let _ = child.wait();
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            running_watcher.store(false, Ordering::SeqCst);
+            let mut map = sessions_watcher.lock().unwrap();
+            map.remove(&session_id_watcher);
         });
 
         Ok(session_id)

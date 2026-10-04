@@ -40,10 +40,16 @@ pub async fn execution_run_agent(
 ) -> Result<String, String> {
     // Sequential Execution Lock: Verify no agent task is currently running
     if let Some(active) = process_mgr.get_active_agent_task() {
-        return Err(format!(
-            "Execution Locked: Agent task '{}' is currently running on project '{}'. Only one agent task can execute at a time.",
-            active.title, active.project_name
-        ));
+        let has_active_sessions = !process_mgr.active_sessions().is_empty();
+        if has_active_sessions {
+            return Err(format!(
+                "Execution Locked: Agent task '{}' is currently running on project '{}'. Only one agent task can execute at a time.",
+                active.title, active.project_name
+            ));
+        } else {
+            // Self-healing: previous process session has exited, auto-clear stale lock
+            process_mgr.set_active_agent_task(None);
+        }
     }
 
     let task = db
@@ -295,6 +301,14 @@ pub async fn execution_get_active_agent_task(
     process_mgr: State<'_, ProcessManager>,
 ) -> Result<Option<crate::models::db::ActiveAgentTaskInfo>, String> {
     Ok(process_mgr.get_active_agent_task())
+}
+
+#[tauri::command]
+pub async fn execution_clear_active_lock(
+    process_mgr: State<'_, ProcessManager>,
+) -> Result<(), String> {
+    process_mgr.set_active_agent_task(None);
+    Ok(())
 }
 
 #[tauri::command]

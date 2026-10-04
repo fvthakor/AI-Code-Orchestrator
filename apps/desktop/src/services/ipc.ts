@@ -130,6 +130,10 @@ export const IpcService = {
     return await invoke<ActiveAgentTaskInfo | null>("execution_get_active_agent_task");
   },
 
+  async executionClearActiveLock(): Promise<void> {
+    await invoke<void>("execution_clear_active_lock");
+  },
+
   async executionRunAgent(taskId: string, agentId: string): Promise<string> {
     return await invoke<string>("execution_run_agent", { taskId, agentId });
   },

@@ -148,8 +148,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
             // Wait for Plan Manager execution to complete
             let planDone = false;
             let checks = 0;
-            while (!planDone && get().isRunning && checks < 30) {
-              await new Promise((r) => setTimeout(r, 1500));
+            while (!planDone && get().isRunning && checks < 120) {
+              await new Promise((r) => setTimeout(r, 1000));
               checks++;
               const active = await useExecutionStore.getState().loadActiveAgentTask();
               if (!active) {
@@ -193,8 +193,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
                     useTerminalStore.getState().openAgentStream(fbExecId);
                     let fbDone = false;
                     let fbChecks = 0;
-                    while (!fbDone && get().isRunning && fbChecks < 30) {
-                      await new Promise((r) => setTimeout(r, 1500));
+                    while (!fbDone && get().isRunning && fbChecks < 120) {
+                      await new Promise((r) => setTimeout(r, 1000));
                       fbChecks++;
                       const active = await useExecutionStore.getState().loadActiveAgentTask();
                       if (!active) fbDone = true;
@@ -212,23 +212,40 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         await useTaskStore.getState().updateStatus(planTask.id, "completed");
       }
 
+      // Ensure active task lock is completely cleared for subsequent steps
+      await useExecutionStore.getState().clearActiveLock();
       get().appendLog(`✓ Plan Manager finished project architectural roadmap.`);
 
-      // Parse dynamic tasks from Plan Manager output if present
+      // Parse dynamic tasks from Plan Manager output (ANSI-safe + robust bracket fallback)
       let plannedTasks: { title: string; description: string; priority?: string }[] = [];
-      const jsonMatch = finalPlanLogs.match(/```(?:json)?\s*(\[\s*\{[\s\S]*?\}\s*\])\s*```/);
-      if (jsonMatch && jsonMatch[1]) {
+      const cleanLogs = finalPlanLogs
+        .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "")
+        .replace(/\r/g, "");
+
+      let rawJson = "";
+      const fenceMatch = cleanLogs.match(/```(?:json)?\s*(\[\s*\{[\s\S]*?\}\s*\])\s*```/);
+      if (fenceMatch && fenceMatch[1]) {
+        rawJson = fenceMatch[1];
+      } else {
+        const firstBracket = cleanLogs.indexOf("[");
+        const lastBracket = cleanLogs.lastIndexOf("]");
+        if (firstBracket !== -1 && lastBracket > firstBracket) {
+          rawJson = cleanLogs.substring(firstBracket, lastBracket + 1);
+        }
+      }
+
+      if (rawJson) {
         try {
-          const parsed = JSON.parse(jsonMatch[1]);
+          const parsed = JSON.parse(rawJson);
           if (Array.isArray(parsed) && parsed.length > 0) {
             plannedTasks = parsed.map((item: Record<string, unknown>, idx: number) => ({
-              title: String(item.title || `[Task ${idx + 1}] Implementation for ${title}`),
+              title: String(item.title || `[Phase ${idx + 1}] Implementation for ${title}`),
               description: String(item.description || description),
               priority: String(item.priority || "high"),
             }));
           }
-        } catch {
-          // Fall back to default blueprints below
+        } catch (parseErr) {
+          console.warn("JSON plan parse warning:", parseErr);
         }
       }
 
@@ -310,6 +327,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
         });
         get().appendLog(`💻 Developer (${developer}) started execution on Task #${i + 1}...`);
 
+        await useExecutionStore.getState().clearActiveLock();
         const execId = await useExecutionStore.getState().runAgentTask(task.id, developer);
         if (!execId) {
           throw new Error(`Failed to start execution for task ${task.id}`);
@@ -377,6 +395,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
 
         // Reload project and task state
         await useTaskStore.getState().loadTasks(projectId);
+        await useExecutionStore.getState().loadExecutions(projectId);
         await useProjectStore.getState().analyzeProject(projectId);
 
         // Auto-advance message
