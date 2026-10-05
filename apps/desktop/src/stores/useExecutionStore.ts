@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Execution, ActiveAgentTaskInfo } from "@ai-orchestrator/shared-types";
 import { IpcService } from "../services/ipc";
+import { useTaskStore } from "./useTaskStore";
 
 interface ExecutionState {
   executions: Execution[];
@@ -84,6 +85,13 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
       const executionId = await IpcService.executionRunAgent(taskId, agentId);
       set({ activeExecutionId: executionId, isLoading: false });
       await get().loadActiveAgentTask();
+
+      // Immediately refresh task status and execution lists in real time
+      const currentTask = useTaskStore.getState().tasks.find((t) => t.id === taskId);
+      if (currentTask) {
+        await useTaskStore.getState().loadTasks(currentTask.projectId);
+        await get().loadExecutions(currentTask.projectId);
+      }
 
       // Subscribe to live output
       await IpcService.onTerminalOutput(executionId, (output) => {

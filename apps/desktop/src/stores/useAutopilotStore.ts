@@ -159,7 +159,12 @@ CRITICAL ARCHITECTURAL DIRECTIVES:
 4. PERSIST PLAN TO DISK:
    - Save the complete architectural specification to: 'docs/PROJECT_PLAN.md' inside this workspace.
 
-5. SPRINT-WISE TASK ROADMAP:
+5. SELF-TERMINATING EXECUTION ONLY (CRITICAL):
+   - Every task deliverable and verification MUST terminate cleanly on its own.
+   - NEVER start persistent background HTTP listeners, long-running dev servers, or background daemon processes (e.g. 'node server.js', 'npm start') without terminating them before completion.
+   - All tests must be finite test suites (unit/integration tests) that automatically finish and exit.
+
+6. SPRINT-WISE TASK ROADMAP:
    - Group the implementation into Sprints (e.g. Sprint 1: Foundation & Data Layer, Sprint 2: Core Business Engine & APIs, Sprint 3: Frontend UI Components, Sprint 4: Full-Stack Integration & QA).
    - At the VERY END of your response, output a strict JSON array of tasks with this exact schema for automated ingestion into the task board:
 \`\`\`json
@@ -204,6 +209,8 @@ CRITICAL ARCHITECTURAL DIRECTIVES:
         try {
           const planExecId = await useExecutionStore.getState().runAgentTask(planTask.id, planManager);
           if (planExecId) {
+            await useTaskStore.getState().loadTasks(projectId);
+            await useExecutionStore.getState().loadExecutions(projectId);
             useTerminalStore.getState().openAgentStream(planExecId);
             // Wait for Plan Manager execution to complete
             let planDone = false;
@@ -214,6 +221,10 @@ CRITICAL ARCHITECTURAL DIRECTIVES:
               const active = await useExecutionStore.getState().loadActiveAgentTask();
               if (!active) {
                 planDone = true;
+              }
+              if (checks % 2 === 0) {
+                await useTaskStore.getState().loadTasks(projectId);
+                await useExecutionStore.getState().loadExecutions(projectId);
               }
             }
 
@@ -451,6 +462,10 @@ ${plannedTasks.map((t, idx) => `### Task ${idx + 1}: ${t.title}\n${t.description
           throw new Error(`Failed to start execution for task ${task.id}`);
         }
 
+        // Live refresh so tasks and executions immediately show [running] badge in real time
+        await useTaskStore.getState().loadTasks(projectId);
+        await useExecutionStore.getState().loadExecutions(projectId);
+
         // Automatically point terminal view to this execution stream
         useTerminalStore.getState().openAgentStream(execId);
 
@@ -462,6 +477,9 @@ ${plannedTasks.map((t, idx) => `### Task ${idx + 1}: ${t.title}\n${t.description
           if (!activeTask) {
             isDone = true;
           }
+          // Real-time synchronization: keep task status and execution lists refreshed
+          await useTaskStore.getState().loadTasks(projectId);
+          await useExecutionStore.getState().loadExecutions(projectId);
         }
 
         const devLogs = useExecutionStore.getState().terminalLogs[execId] || "";

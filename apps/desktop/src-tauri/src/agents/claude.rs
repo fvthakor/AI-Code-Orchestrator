@@ -93,11 +93,24 @@ impl AgentAdapter for ClaudeAdapter {
         _project_path: &Path,
         cli_path: &Path,
     ) -> Result<ExecutionCommand, String> {
-        let prompt = if task.description.trim().is_empty() {
-            task.title.clone()
+        let desc = if task.description.trim().is_empty() {
+            "Implement full working code, create required files, and run tests."
         } else {
-            format!("{}: {}", task.title, task.description)
+            &task.description
         };
+
+        let prompt = format!(
+            "AUTONOMOUS TASK - DO NOT ASK QUESTIONS. DO NOT PROMPT FOR OPTIONS.\n\
+             Directly create and write all necessary code files, implement full functionality, and execute build/test commands for:\n\
+             Task: {}\n\n\
+             Details & Requirements:\n{}\n\n\
+             CRITICAL EXECUTION RULES:\n\
+             1. DO NOT start persistent background processes or long-running servers (e.g. 'node server.js', 'npm start', 'npm run dev', or Start-Process without termination). Never leave listening ports open.\n\
+             2. All tests and verifications MUST be finite, self-terminating scripts (e.g. 'npm test', unit tests, or test runners that automatically exit with a status code).\n\
+             3. When finished, ensure all child processes are terminated cleanly.",
+            task.title,
+            desc
+        );
 
         Ok(ExecutionCommand {
             program: cli_path.to_path_buf(),
