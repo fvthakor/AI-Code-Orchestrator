@@ -152,3 +152,57 @@ pub async fn stats_get_global(
         active_task,
     })
 }
+
+#[tauri::command]
+pub async fn project_save_plan(
+    project_id: String,
+    plan_content: String,
+    db: State<'_, DbManager>,
+) -> Result<String, String> {
+    let p = db
+        .get_project_by_id(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Project '{}' not found", project_id))?;
+
+    let clean_path = p.path.strip_prefix(r"\\?\").unwrap_or(&p.path);
+    let project_dir = Path::new(clean_path);
+
+    let docs_dir = project_dir.join("docs");
+    let _ = std::fs::create_dir_all(&docs_dir);
+
+    // Hardened .gitignore: ensure local environment and sensitive tokens are never committed
+    let gitignore_path = project_dir.join(".gitignore");
+    let default_gitignore = "\
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.token
+*.key
+*.log
+.DS_Store
+Thumbs.db
+";
+    if !gitignore_path.exists() {
+        let _ = std::fs::write(&gitignore_path, default_gitignore);
+    } else if let Ok(existing) = std::fs::read_to_string(&gitignore_path) {
+        if !existing.contains(".env") {
+            let _ = std::fs::write(&gitignore_path, format!("{}\n{}", existing.trim_end(), default_gitignore));
+        }
+    }
+
+    // Pre-create full-stack directory skeleton
+    let _ = std::fs::create_dir_all(project_dir.join("src").join("modules"));
+    let _ = std::fs::create_dir_all(project_dir.join("src").join("database"));
+    let _ = std::fs::create_dir_all(project_dir.join("src").join("server"));
+    let _ = std::fs::create_dir_all(project_dir.join("frontend").join("src").join("components"));
+    let _ = std::fs::create_dir_all(project_dir.join("tests").join("backend"));
+    let _ = std::fs::create_dir_all(project_dir.join("tests").join("frontend"));
+
+    let plan_path = docs_dir.join("PROJECT_PLAN.md");
+    std::fs::write(&plan_path, &plan_content).map_err(|e| format!("Failed to write PROJECT_PLAN.md: {}", e))?;
+
+    Ok(plan_path.to_string_lossy().to_string())
+}

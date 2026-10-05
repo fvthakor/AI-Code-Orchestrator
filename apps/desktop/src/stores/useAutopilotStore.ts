@@ -132,8 +132,68 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
       // Step 1: Execute Plan Manager to analyze and plan the entire project
       get().appendLog(`Phase 1: Dispatching project planning to Lead Architect (${planManager})...`);
 
-      const planTaskTitle = `[Plan Manager] Project Blueprint & Architecture: ${title}`;
-      const planTaskDesc = `You are the Lead Software Architect and Plan Manager.\nAnalyze the project goal and define the complete architecture, directory layout, and implementation requirements:\n\nGoal: ${title}\n\nRequirements:\n${description}\n\nProduce a list of 3-5 concrete, priority-ordered implementation tasks to build this project.\nAt the very end of your response, output a JSON array of the tasks in this exact schema so they can be added to the project board:\n\`\`\`json\n[\n  {\n    "title": "[Phase 1: Architecture] Set up models, types and core configuration",\n    "description": "Details of what to implement...",\n    "priority": "high"\n  },\n  {\n    "title": "[Phase 2: Core Engine] Implement main logic and operations",\n    "description": "Details of what to implement...",\n    "priority": "high"\n  },\n  {\n    "title": "[Phase 3: QA Verification] Unit tests, edge cases and validation",\n    "description": "Details of what to test...",\n    "priority": "medium"\n  }\n]\n\`\`\``;
+      const planTaskTitle = `[Lead Architect] Architectural Blueprint & Sprint Plan: ${title}`;
+      const planTaskDesc = `You are the Lead Software Architect and Plan Manager.
+Apply principal architectural design, brainstorming, and writing-plans methodologies.
+
+PROJECT GOAL:
+${title}
+
+REQUIREMENTS:
+${description}
+
+CRITICAL ARCHITECTURAL DIRECTIVES:
+1. FULL-STACK & MODULE-WISE DECOMPOSITION:
+   - For applications with UI: Structure as a Root Node.js project with an embedded 'frontend/' application (React/Vite) and backend in 'src/'.
+   - Decompose into isolated modules (e.g. src/database, src/modules/booking, src/modules/conversation, frontend/src/components, frontend/src/store, tests/backend, tests/frontend).
+   - Define exact Tech Stack & dependencies upfront.
+
+2. PRE-DEFINED FOLDER STRUCTURE:
+   - Define the exact directory tree (docs/, src/database/, src/modules/, src/server/, frontend/src/, tests/).
+   - Every file created in subsequent tasks MUST belong to this predefined structure.
+
+3. SECURITY & TOKEN PROTECTION (MANDATORY):
+   - Never commit or expose local secrets, API keys, tokens, or environment variables.
+   - Enforce .env.example templates and ensure .gitignore ignores all sensitive files.
+
+4. PERSIST PLAN TO DISK:
+   - Save the complete architectural specification to: 'docs/PROJECT_PLAN.md' inside this workspace.
+
+5. SPRINT-WISE TASK ROADMAP:
+   - Group the implementation into Sprints (e.g. Sprint 1: Foundation & Data Layer, Sprint 2: Core Business Engine & APIs, Sprint 3: Frontend UI Components, Sprint 4: Full-Stack Integration & QA).
+   - At the VERY END of your response, output a strict JSON array of tasks with this exact schema for automated ingestion into the task board:
+\`\`\`json
+[
+  {
+    "sprint": "Sprint 1",
+    "module": "database",
+    "title": "[Sprint 1 - Database] Define schemas and slot models",
+    "description": "Target: src/database/\\n\\nRequirements: Define data models and migrations. Acceptance criteria: Types compile and migrations run cleanly.",
+    "priority": "high"
+  },
+  {
+    "sprint": "Sprint 2",
+    "module": "booking-engine",
+    "title": "[Sprint 2 - Engine] Appointment slot calculation logic",
+    "description": "Target: src/modules/booking/\\n\\nRequirements: Implement availability algorithm. Acceptance criteria: Handles conflicting slots and timezone calculations.",
+    "priority": "high"
+  },
+  {
+    "sprint": "Sprint 3",
+    "module": "frontend-ui",
+    "title": "[Sprint 3 - Frontend] Chat Widget and Appointment UI",
+    "description": "Target: frontend/src/components/\\n\\nRequirements: Implement interactive chat box and calendar booking component. Acceptance criteria: Responsive UI with slot selection.",
+    "priority": "high"
+  },
+  {
+    "sprint": "Sprint 4",
+    "module": "qa-integration",
+    "title": "[Sprint 4 - QA & E2E] Full-stack integration and end-to-end tests",
+    "description": "Target: tests/\\n\\nRequirements: Connect Frontend to Backend APIs and write end-to-end booking verification tests. Acceptance criteria: All tests pass without regressions.",
+    "priority": "medium"
+  }
+]
+\`\`\``;
 
       const planTask = await useTaskStore.getState().createTask(projectId, planTaskTitle, planTaskDesc, planManager);
       await useTaskStore.getState().loadTasks(projectId);
@@ -239,7 +299,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
           const parsed = JSON.parse(rawJson);
           if (Array.isArray(parsed) && parsed.length > 0) {
             plannedTasks = parsed.map((item: Record<string, unknown>, idx: number) => ({
-              title: String(item.title || `[Phase ${idx + 1}] Implementation for ${title}`),
+              title: String(item.title || `[Sprint ${idx + 1}] Implementation for ${title}`),
               description: String(item.description || description),
               priority: String(item.priority || "high"),
             }));
@@ -252,24 +312,74 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
       if (plannedTasks.length === 0) {
         plannedTasks = [
           {
-            title: `[Core Architecture] ${title} - Data Models & Storage`,
-            description: `Goal: ${title}\n\nRequirements:\n${description}\n\nDeliverable: Implement core business logic, database schemas, types, interfaces, and state management models without regressions.`,
+            title: `[Sprint 1 - Foundation] ${title} - Database & Configuration Layer`,
+            description: `Target: src/database/ and src/config/\n\nGoal: ${title}\n\nDeliverable: Implement core models, database schemas, types, and environment configuration without regressions.`,
             priority: "high",
           },
           {
-            title: `[Functional Engine] ${title} - Business Logic & Flow`,
-            description: `Implement the operational features and algorithms required for: ${title}.\n\nRequirements:\n${description}\n\nDeliverable: Fully integrated functional logic, error handling, slot validation, and state transitions.`,
+            title: `[Sprint 2 - Core Engine] ${title} - Business Logic & API Services`,
+            description: `Target: src/modules/ and src/server/\n\nDeliverable: Implement domain algorithms, operational controllers, validation, and error handling.`,
             priority: "high",
           },
           {
-            title: `[QA Verification] Unit tests & edge case validation for ${title}`,
-            description: `Write and execute comprehensive unit tests covering all edge cases, failure states, and validations for: ${title}.`,
+            title: `[Sprint 3 - Frontend UI] ${title} - Web Client & Interactive Components`,
+            description: `Target: frontend/src/\n\nDeliverable: Build user interface, responsive state management, and real-time client connection.`,
+            priority: "high",
+          },
+          {
+            title: `[Sprint 4 - QA & Integration] Full-stack verification & unit tests for ${title}`,
+            description: `Target: tests/\n\nDeliverable: Write comprehensive unit, integration, and end-to-end tests covering all edge cases.`,
             priority: "medium",
           },
         ];
       }
 
-      get().appendLog(`Phase 2: Adding ${plannedTasks.length} planned tasks one-by-one to project task board...`);
+      // Persist the complete architectural blueprint and sprint plan to disk in docs/PROJECT_PLAN.md
+      const planMarkdown = `# Architectural Blueprint & Sprint Plan: ${title}
+
+## Overview & Scope
+${description}
+
+## Full-Stack Architecture
+- **Root Node.js Application**: Coordinates dev scripts, linting, and build tooling.
+- **Backend Architecture**: Modular Domain-Driven Engine in \`src/\` (\`database/\`, \`modules/\`, \`server/\`).
+- **Frontend Architecture**: Client UI Application in \`frontend/\` (\`components/\`, \`pages/\`, \`store/\`, \`services/\`).
+- **Testing Strategy**: Automated Unit & E2E Suites in \`tests/backend/\` and \`tests/frontend/\`.
+- **Security Policy**: Sensitive environment variables (\`.env\`) and tokens are strictly excluded by \`.gitignore\`.
+
+## Pre-Defined Folder Structure
+\`\`\`text
+├── docs/
+│   └── PROJECT_PLAN.md
+├── frontend/
+│   ├── public/
+│   └── src/ (components/, pages/, store/, services/)
+├── src/
+│   ├── config/
+│   ├── database/ (models/, migrations/)
+│   ├── modules/
+│   └── server/ (routes/, controllers/)
+├── tests/
+│   ├── backend/
+│   └── frontend/
+└── package.json
+\`\`\`
+
+## Sprints & Deliverables Backlog
+${plannedTasks.map((t, idx) => `### Task ${idx + 1}: ${t.title}\n${t.description}\n**Priority**: ${t.priority || "high"}\n`).join("\n")}
+
+---
+*Generated by Lead Architect (${planManager}) on ${new Date().toISOString()}*
+`;
+
+      try {
+        await IpcService.projectSavePlan(projectId, planMarkdown);
+        get().appendLog(`💾 Saved complete architecture specification to 'docs/PROJECT_PLAN.md'.`);
+      } catch (saveErr) {
+        console.warn("Could not save docs/PROJECT_PLAN.md:", saveErr);
+      }
+
+      get().appendLog(`Phase 2: Adding ${plannedTasks.length} sprint-planned tasks one-by-one to project task board...`);
       set({ totalTasks: plannedTasks.length });
 
       const createdTasks = [];
@@ -301,14 +411,22 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
           activeTaskTitle: task.title,
         });
 
-        // 3A. Git Branching: Checkout master/main, pull latest, create task branch
+        // 3A. Git Branching: Checkout master/main, pull latest, create task branch sprint-wise
         set({
           currentPhase: "branching",
           statusMessage: `Git: Synchronizing main/master and preparing branch for Task #${i + 1}...`,
         });
         get().appendLog(`🌿 Git: Synchronizing main/master and creating task branch...`);
 
-        const slug = `task-${i + 1}-${title.replace(/[^a-zA-Z0-9]+/g, "-").slice(0, 20)}`;
+        const sprintMatch = task.title.match(/\[(Sprint\s*\d+)[^\]]*\]/i);
+        const sprintTag = sprintMatch ? sprintMatch[1].replace(/\s+/g, "-").toLowerCase() : `sprint-1`;
+        const taskSlug = task.title
+          .replace(/^\[.*?\]\s*/, "")
+          .replace(/[^a-zA-Z0-9]+/g, "-")
+          .slice(0, 25)
+          .toLowerCase()
+          .replace(/^-+|-+$/g, "");
+        const slug = `${sprintTag}/${taskSlug || `task-${i + 1}`}`;
         let branchName = "";
         try {
           branchName = await IpcService.gitPrepareTaskBranch(projectId, slug);
@@ -381,7 +499,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
 
         if (branchName) {
           try {
-            const commitMsg = `feat(task-${i + 1}): ${task.title.replace(/^\[.*?\]\s*/, "")}`;
+            const commitMsg = `feat(${sprintTag}): ${task.title.replace(/^\[.*?\]\s*/, "")}`;
             const pushResult = await IpcService.gitCommitAndPush(projectId, branchName, commitMsg);
             get().appendLog(`🚀 Git Push: ${pushResult}`);
           } catch (pushErr) {

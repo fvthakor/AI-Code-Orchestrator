@@ -58,6 +58,10 @@ export const IpcService = {
     return await invoke<void>("project_delete", { projectId });
   },
 
+  async projectSavePlan(projectId: string, planContent: string): Promise<string> {
+    return await invoke<string>("project_save_plan", { projectId, planContent });
+  },
+
   // Agents
   async agentDetectAll(): Promise<AgentInfo[]> {
     return await invoke<AgentInfo[]>("agent_detect_all");

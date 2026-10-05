@@ -107,7 +107,7 @@ impl GitHubService {
         // Clean task slug
         let sanitized = task_slug
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' || c == '/' { c } else { '-' })
             .collect::<String>()
             .to_lowercase();
         let branch_name = if sanitized.starts_with("feat/") {

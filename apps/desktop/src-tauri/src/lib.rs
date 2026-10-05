@@ -17,7 +17,7 @@ use execution::process_manager::ProcessManager;
 use agents::registry::AgentRegistry;
 use security::policy::PolicyEngine;
 
-use commands::projects::{project_open, project_analyze, project_list, project_delete, stats_get_global};
+use commands::projects::{project_open, project_analyze, project_list, project_delete, project_save_plan, stats_get_global};
 use commands::agents::{agent_detect_all, agent_save_config, agent_test_connection};
 use commands::tasks::{task_create, task_list, task_list_all, task_get, task_update_status, task_delete};
 use commands::executions::{execution_list, execution_list_all, execution_get, execution_get_active_agent_task, execution_clear_active_lock, execution_run_agent, execution_run_command};
@@ -56,6 +56,7 @@ pub fn run() {
             project_analyze,
             project_list,
             project_delete,
+            project_save_plan,
             stats_get_global,
             // Agents
             agent_detect_all,
