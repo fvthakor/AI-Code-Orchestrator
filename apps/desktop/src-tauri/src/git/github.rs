@@ -305,6 +305,103 @@ impl GitHubService {
             is_web_fallback: true,
         })
     }
+
+    /// Checks whether a task branch has been merged into base branch (master/main).
+    /// Supports:
+    /// - Standard merge commit & fast-forward (`git merge-base --is-ancestor`)
+    /// - Squash & merge / Rebase (empty diff between base and branch)
+    /// - Remote branch deletion on GitHub after PR merge
+    /// - Local-only repositories
+    pub fn is_branch_merged(
+        repo_dir: &Path,
+        branch_name: &str,
+        base_branch: Option<&str>,
+    ) -> Result<bool, String> {
+        if !repo_dir.join(".git").exists() {
+            return Ok(true);
+        }
+
+        // Determine base branch
+        let base = if let Some(b) = base_branch {
+            b.to_string()
+        } else if Self::run_git_cmd(repo_dir, &["show-ref", "--verify", "--quiet", "refs/heads/master"]).is_ok() {
+            "master".to_string()
+        } else if Self::run_git_cmd(repo_dir, &["show-ref", "--verify", "--quiet", "refs/heads/main"]).is_ok() {
+            "main".to_string()
+        } else {
+            "master".to_string()
+        };
+
+        if branch_name == base {
+            return Ok(true);
+        }
+
+        let has_remote = Self::get_remote_url(repo_dir).is_ok();
+
+        if has_remote {
+            // Fetch latest origin base and branch to sync refs
+            let _ = Self::run_git_cmd(repo_dir, &["fetch", "origin", &base]);
+            let _ = Self::run_git_cmd(repo_dir, &["fetch", "origin", branch_name]);
+
+            let remote_base = format!("origin/{}", base);
+            let remote_branch = format!("origin/{}", branch_name);
+
+            // 1. Direct Ancestry Check (Standard & Fast-Forward merge)
+            if Self::run_git_cmd(repo_dir, &["merge-base", "--is-ancestor", &remote_branch, &remote_base]).is_ok() {
+                return Ok(true);
+            }
+            if Self::run_git_cmd(repo_dir, &["merge-base", "--is-ancestor", branch_name, &remote_base]).is_ok() {
+                return Ok(true);
+            }
+
+            // 2. Squash & Merge / Rebase check: zero diff between origin/base and branch
+            if let Ok(diff) = Self::run_git_cmd(repo_dir, &["diff", &remote_base, &remote_branch]) {
+                if diff.trim().is_empty() {
+                    return Ok(true);
+                }
+            }
+            if let Ok(diff) = Self::run_git_cmd(repo_dir, &["diff", &remote_base, branch_name]) {
+                if diff.trim().is_empty() {
+                    return Ok(true);
+                }
+            }
+
+            // 3. Remote branch deletion check (e.g. GitHub deletes branch after PR merge)
+            let ls_remote = Self::run_git_cmd(repo_dir, &["ls-remote", "--heads", "origin", branch_name]);
+            if let Ok(out) = ls_remote {
+                if out.trim().is_empty() {
+                    return Ok(true);
+                }
+            }
+
+            Ok(false)
+        } else {
+            // Local repository check
+            if Self::run_git_cmd(repo_dir, &["merge-base", "--is-ancestor", branch_name, &base]).is_ok() {
+                return Ok(true);
+            }
+            if let Ok(diff) = Self::run_git_cmd(repo_dir, &["diff", &base, branch_name]) {
+                if diff.trim().is_empty() {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+    }
+
+    /// Merges a feature branch into base branch locally and pushes to origin if remote exists.
+    pub fn merge_branch_locally(
+        repo_dir: &Path,
+        branch_name: &str,
+        base_branch: Option<&str>,
+    ) -> Result<String, String> {
+        let base = base_branch.unwrap_or("master");
+        Self::run_git_cmd(repo_dir, &["checkout", base])?;
+        let _ = Self::run_git_cmd(repo_dir, &["pull", "origin", base]);
+        Self::run_git_cmd(repo_dir, &["merge", branch_name, "--no-ff", "-m", &format!("Merge branch '{}' into {}", branch_name, base)])?;
+        let _ = Self::run_git_cmd(repo_dir, &["push", "origin", base]);
+        Ok(format!("Successfully merged '{}' into '{}'", branch_name, base))
+    }
 }
 
 #[cfg(test)]

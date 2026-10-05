@@ -16,6 +16,7 @@ import {
   Rocket,
   Square,
   Loader2,
+  GitMerge,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useTaskStore } from "../../stores/useTaskStore";
@@ -65,6 +66,7 @@ export function ProjectDashboard({
     logs: autopilotLogs,
     startAutopilot,
     stopAutopilot,
+    forceMergeAndContinue,
     activeBranchName,
   } = useAutopilotStore();
 
@@ -521,8 +523,15 @@ export function ProjectDashboard({
                       <span className="font-bold text-sm text-slate-100">
                         Autonomous Autopilot Active
                       </span>
-                      <Badge variant="default" className="text-[10px] bg-indigo-600 text-white animate-pulse">
-                        {autopilotPhase.toUpperCase()}
+                      <Badge
+                        variant="default"
+                        className={`text-[10px] ${
+                          autopilotPhase === "waiting_for_merge"
+                            ? "bg-amber-600 text-white animate-pulse"
+                            : "bg-indigo-600 text-white animate-pulse"
+                        }`}
+                      >
+                        {autopilotPhase === "waiting_for_merge" ? "WAITING FOR MERGE" : autopilotPhase.toUpperCase()}
                       </Badge>
                     </div>
                     <span className="text-xs text-indigo-300 font-mono block">
@@ -533,6 +542,18 @@ export function ProjectDashboard({
                 </div>
 
                 <div className="flex items-center space-x-2">
+                  {autopilotPhase === "waiting_for_merge" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={forceMergeAndContinue}
+                      className="text-xs h-7 text-amber-300 hover:text-white border-amber-500/40 bg-amber-950/30 hover:bg-amber-900/50"
+                      title="Merge branch locally into master/main and advance to next task immediately"
+                    >
+                      <GitMerge className="w-3.5 h-3.5 mr-1" />
+                      <span>Force Merge & Continue</span>
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -589,11 +610,11 @@ export function ProjectDashboard({
                 </div>
 
                 <div className={`p-2 rounded border flex items-center space-x-1.5 ${
-                  autopilotPhase === "pushing"
+                  autopilotPhase === "pushing" || autopilotPhase === "waiting_for_merge"
                     ? "bg-indigo-950/80 border-indigo-500 text-indigo-300 shadow-sm shadow-indigo-500/10"
                     : "bg-slate-950 border-slate-800 text-slate-400"
                 }`}>
-                  <span>5. Push & Next</span>
+                  <span>{autopilotPhase === "waiting_for_merge" ? "5. ⏳ Awaiting Merge" : "5. Push & Next"}</span>
                 </div>
               </div>
 

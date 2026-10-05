@@ -223,6 +223,22 @@ export const IpcService = {
     return await invoke<GitHubPrResult>("git_create_pr", { request });
   },
 
+  async gitIsBranchMerged(
+    projectId: string,
+    branchName: string,
+    baseBranch?: string
+  ): Promise<boolean> {
+    return await invoke<boolean>("git_is_branch_merged", { projectId, branchName, baseBranch });
+  },
+
+  async gitMergeBranchLocally(
+    projectId: string,
+    branchName: string,
+    baseBranch?: string
+  ): Promise<string> {
+    return await invoke<string>("git_merge_branch_locally", { projectId, branchName, baseBranch });
+  },
+
   // Team Orchestration
   async teamStartWorkflow(params: {
     projectId: string;

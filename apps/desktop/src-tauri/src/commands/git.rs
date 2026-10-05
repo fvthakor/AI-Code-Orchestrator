@@ -171,3 +171,41 @@ pub async fn git_commit_and_push(
     )
 }
 
+#[tauri::command]
+pub async fn git_is_branch_merged(
+    project_id: String,
+    branch_name: String,
+    base_branch: Option<String>,
+    db: State<'_, DbManager>,
+) -> Result<bool, String> {
+    let p = db
+        .get_project_by_id(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Project '{}' not found", project_id))?;
+
+    crate::git::github::GitHubService::is_branch_merged(
+        Path::new(&p.path),
+        &branch_name,
+        base_branch.as_deref(),
+    )
+}
+
+#[tauri::command]
+pub async fn git_merge_branch_locally(
+    project_id: String,
+    branch_name: String,
+    base_branch: Option<String>,
+    db: State<'_, DbManager>,
+) -> Result<String, String> {
+    let p = db
+        .get_project_by_id(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Project '{}' not found", project_id))?;
+
+    crate::git::github::GitHubService::merge_branch_locally(
+        Path::new(&p.path),
+        &branch_name,
+        base_branch.as_deref(),
+    )
+}
+

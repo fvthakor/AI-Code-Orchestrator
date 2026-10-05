@@ -14,6 +14,7 @@ export type AutopilotPhase =
   | "developing"
   | "testing"
   | "pushing"
+  | "waiting_for_merge"
   | "completed"
   | "failed";
 
@@ -28,6 +29,7 @@ interface AutopilotState {
   totalTasks: number;
   error: string | null;
   logs: string[];
+  skipCurrentMergeWait: boolean;
 
   startAutopilot: (params: {
     projectId: string;
@@ -36,6 +38,7 @@ interface AutopilotState {
     isGreenfield?: boolean;
   }) => Promise<void>;
   stopAutopilot: () => void;
+  forceMergeAndContinue: () => void;
   appendLog: (msg: string) => void;
 }
 
@@ -50,10 +53,16 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
   totalTasks: 0,
   error: null,
   logs: [],
+  skipCurrentMergeWait: false,
 
   appendLog: (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
     set((state) => ({ logs: [...state.logs.slice(-50), `[${timestamp}] ${msg}`] }));
+  },
+
+  forceMergeAndContinue: () => {
+    set({ skipCurrentMergeWait: true });
+    get().appendLog("User requested force merge & continue for current task branch.");
   },
 
   stopAutopilot: () => {
@@ -61,6 +70,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => ({
       isRunning: false,
       currentPhase: "idle",
       statusMessage: "Autopilot stopped by user",
+      skipCurrentMergeWait: false,
     });
     get().appendLog("Autopilot stopped by user.");
   },
@@ -534,9 +544,57 @@ ${plannedTasks.map((t, idx) => `### Task ${idx + 1}: ${t.title}\n${t.description
         await useExecutionStore.getState().loadExecutions(projectId);
         await useProjectStore.getState().analyzeProject(projectId);
 
-        // Auto-advance message
-        if (i < createdTasks.length - 1) {
-          get().appendLog(`🔁 Automatically advancing to Task #${i + 2}...`);
+        // 3E. Git Merge Gate: Verify previous task branch is merged into master/main before starting next task
+        if (i < createdTasks.length - 1 && branchName) {
+          set({
+            currentPhase: "waiting_for_merge",
+            statusMessage: `Waiting for branch '${branchName}' to be merged into master/main... Checking every 30s.`,
+          });
+          get().appendLog(`⏳ Git Gate: Next task held. Waiting for branch '${branchName}' to be merged into master/main before starting Task #${i + 2}...`);
+
+          let isMerged = false;
+          let checkCount = 0;
+
+          while (!isMerged && get().isRunning) {
+            try {
+              isMerged = await IpcService.gitIsBranchMerged(projectId, branchName);
+            } catch (mergeErr) {
+              console.warn("Could not check merge status:", mergeErr);
+              isMerged = false;
+            }
+
+            if (isMerged) {
+              get().appendLog(`🎉 Branch '${branchName}' has been merged into master/main! Pulling latest changes...`);
+              break;
+            }
+
+            checkCount++;
+            get().appendLog(`⏳ Branch '${branchName}' not merged yet (check #${checkCount}). Re-checking in 30 seconds... (Please merge PR on GitHub/Git)`);
+
+            // 30-second interval with 1-second ticks for instant cancellation or manual force-merge
+            for (let sec = 0; sec < 30 && get().isRunning; sec++) {
+              if (get().skipCurrentMergeWait) {
+                get().appendLog(`⏩ Merge wait bypassed by user! Merging branch locally...`);
+                try {
+                  const mergeResult = await IpcService.gitMergeBranchLocally(projectId, branchName);
+                  get().appendLog(`🌿 Local merge: ${mergeResult}`);
+                } catch (mErr) {
+                  get().appendLog(`ℹ Local merge note: ${String(mErr)}`);
+                }
+                isMerged = true;
+                set({ skipCurrentMergeWait: false });
+                break;
+              }
+              await new Promise((r) => setTimeout(r, 1000));
+            }
+          }
+
+          if (!get().isRunning) {
+            get().appendLog("Autopilot stopped while waiting for branch merge.");
+            break;
+          }
+
+          get().appendLog(`🔁 Advancing to Task #${i + 2}...`);
         }
       }
 
