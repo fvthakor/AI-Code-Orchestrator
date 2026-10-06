@@ -172,6 +172,34 @@ pub async fn git_commit_and_push(
 }
 
 #[tauri::command]
+pub async fn git_resume_task_branch(
+    project_id: String,
+    branch_name: String,
+    db: State<'_, DbManager>,
+) -> Result<String, String> {
+    let p = db
+        .get_project_by_id(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Project '{}' not found", project_id))?;
+
+    crate::git::github::GitHubService::resume_task_branch(Path::new(&p.path), &branch_name)
+}
+
+/// Prepares the project's repo for the autopilot: git init if needed, first commit, base branch, push.
+#[tauri::command]
+pub async fn git_bootstrap_repo(
+    project_id: String,
+    db: State<'_, DbManager>,
+) -> Result<crate::git::github::RepoBootstrap, String> {
+    let p = db
+        .get_project_by_id(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Project '{}' not found", project_id))?;
+
+    crate::git::github::GitHubService::bootstrap_repo(Path::new(&p.path))
+}
+
+#[tauri::command]
 pub async fn git_is_branch_merged(
     project_id: String,
     branch_name: String,

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useAutopilotStore } from "../stores/useAutopilotStore";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -56,6 +57,22 @@ export function AppLayout({ currentPage, onNavigate, children }: AppLayoutProps)
     activeExecutionId,
   } = useTerminalStore();
   const { activeAgentTask } = useExecutionStore();
+
+  // On app launch (including after the laptop woke up): resume any unfinished autopilot run.
+  // Paused runs stay paused. This runs regardless of which page is open.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await useProjectStore.getState().loadProjects();
+      for (const project of useProjectStore.getState().projects) {
+        if (cancelled) return;
+        await useAutopilotStore.getState().restoreAutopilot(project.id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);

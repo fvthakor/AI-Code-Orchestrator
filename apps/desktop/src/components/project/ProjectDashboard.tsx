@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { TaskDetail } from "./TaskDetail";
+import { EnvironmentStatus } from "./EnvironmentStatus";
 import {
   FolderOpen,
   Code2,
@@ -64,13 +66,25 @@ export function ProjectDashboard({
     currentTaskIndex,
     totalTasks,
     logs: autopilotLogs,
+    timeline: autopilotTimeline,
     startAutopilot,
-    stopAutopilot,
+    pauseAutopilot,
+    resumeAutopilot,
+    sendTaskToQa,
+    continuePlan,
+    error: autopilotError,
+    resumable: autopilotResumable,
+    dismissError,
+    successMessage: autopilotSuccess,
+    dismissSuccess,
+    isPaused: isAutopilotPaused,
     forceMergeAndContinue,
     activeBranchName,
   } = useAutopilotStore();
 
   const [isRunningTaskId, setIsRunningTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const terminalLogs = useExecutionStore((s) => s.terminalLogs);
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [wfTitle, setWfTitle] = useState("");
   const [wfGoal, setWfGoal] = useState("");
@@ -126,7 +140,8 @@ export function ProjectDashboard({
     spawnSession(project.id);
   };
 
-  const recentTasks = tasks.slice(0, 5);
+  // Every task of this project, so the whole board is visible (the card scrolls)
+  const recentTasks = tasks;
   const recentExecutions = executions.slice(0, 5);
   const projectWorkflows = workflows.slice(0, 3);
 
@@ -510,8 +525,74 @@ export function ProjectDashboard({
             })()}
           </div>
 
+          <EnvironmentStatus />
+
+          {/* Plan tasks still waiting: one click starts them through the full cycle */}
+          {!isAutopilotRunning && tasks.some((t) => /^\[Sprint\s*\d+/i.test(t.title) && t.status === "pending") && (
+            <div className="p-3 rounded-lg bg-indigo-950/40 border border-indigo-700/50 text-xs flex items-center justify-between gap-3">
+              <span className="text-indigo-100">
+                Plan tasks are waiting. Continue runs them one by one: develop → QA → PR → merge → next.
+              </span>
+              <button
+                type="button"
+                onClick={() => project?.id && void continuePlan(project.id)}
+                className="shrink-0 px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-500"
+              >
+                Continue plan
+              </button>
+            </div>
+          )}
+
+          {/* Plan finished: every PR merged. Stays until dismissed */}
+          {autopilotSuccess && !isAutopilotRunning && (
+            <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-700/60 text-xs flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="font-medium text-emerald-300">Plan complete</div>
+                <div className="text-emerald-100/90">{autopilotSuccess}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => dismissSuccess()}
+                className="shrink-0 px-2 py-1 rounded bg-emerald-900/70 text-emerald-100 hover:bg-emerald-800"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* A failed run stays visible with its reason until you dismiss it */}
+          {autopilotError && !isAutopilotRunning && (
+            <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-700/60 text-xs flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="font-medium text-rose-300">Autopilot stopped</div>
+                <div className="text-rose-100/90 whitespace-pre-wrap break-words">{autopilotError}</div>
+              </div>
+              <div className="shrink-0 flex flex-col gap-1.5">
+                {autopilotResumable && project?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dismissError();
+                      void resumeAutopilot(project.id);
+                    }}
+                    className="px-2 py-1 rounded bg-emerald-700 text-white hover:bg-emerald-600"
+                  >
+                    Resume
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => dismissError()}
+                  className="px-2 py-1 rounded bg-rose-900/70 text-rose-100 hover:bg-rose-800"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Autonomous Autopilot Live Status & Controls */}
-          {isAutopilotRunning ? (
+          {isAutopilotRunning || isAutopilotPaused ? (
             <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-500/40 shadow-lg space-y-3.5 animate-in fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center space-x-2.5">
@@ -563,15 +644,27 @@ export function ProjectDashboard({
                     <Terminal className="w-3.5 h-3.5 mr-1" />
                     <span>View Live Stream</span>
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={stopAutopilot}
-                    className="text-xs h-7 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40"
-                  >
-                    <Square className="w-3 h-3 mr-1" />
-                    <span>Stop Autopilot</span>
-                  </Button>
+                  {isAutopilotRunning ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void pauseAutopilot()}
+                      className="text-xs h-7 text-amber-300 hover:text-amber-200 hover:bg-amber-950/40"
+                    >
+                      <Square className="w-3 h-3 mr-1" />
+                      <span>Pause Autopilot</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => project?.id && void resumeAutopilot(project.id)}
+                      className="text-xs h-7 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-950/40"
+                    >
+                      <Rocket className="w-3 h-3 mr-1" />
+                      <span>Resume Autopilot</span>
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -630,6 +723,18 @@ export function ProjectDashboard({
                   </div>
                 )}
               </div>
+
+              {/* One sentence per step: what happened, without the raw log */}
+              {autopilotTimeline.length > 0 && (
+                <ol className="p-2.5 rounded-lg bg-slate-950/90 border border-slate-800 space-y-1 text-[11px] text-slate-300 max-h-48 overflow-y-auto">
+                  {autopilotTimeline.slice(-8).map((event, idx) => (
+                    <li key={`${event.time}-${idx}`} className="flex gap-2">
+                      <span className="font-mono text-slate-500 shrink-0">{event.time}</span>
+                      <span>{event.text}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           ) : (
             <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-3">
@@ -741,7 +846,7 @@ export function ProjectDashboard({
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
               {recentTasks.length === 0 ? (
                 <div className="text-center py-6 text-xs text-slate-500 space-y-2.5">
                   <p>No tasks created yet for this project.</p>
@@ -758,12 +863,20 @@ export function ProjectDashboard({
               ) : (
                 recentTasks.map((t) => {
                   const isLocked = Boolean(activeAgentTask);
+                  const isSelected = selectedTaskId === t.id;
+                  const taskExecutions = executions
+                    .filter((e) => e.taskId === t.id)
+                    .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
                   return (
+                    <div key={t.id} className="space-y-2">
                     <div
-                      key={t.id}
                       className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs hover:border-slate-700 transition"
                     >
-                      <div className="space-y-0.5 max-w-[70%]">
+                      <div
+                        className="space-y-0.5 max-w-[70%] cursor-pointer"
+                        onClick={() => setSelectedTaskId(isSelected ? null : t.id)}
+                        title="Click to see what happened"
+                      >
                         <div className="font-medium text-slate-200 truncate">{t.title}</div>
                         <div className="text-[11px] text-slate-500 truncate">
                           {t.agentId ? `Assigned: ${t.agentId}` : "Unassigned"}
@@ -786,6 +899,17 @@ export function ProjectDashboard({
                           {t.status}
                         </Badge>
 
+                        {t.status === "awaiting_qa" && (
+                          <button
+                            disabled={isAutopilotRunning}
+                            onClick={() => project?.id && void sendTaskToQa(project.id, t.id)}
+                            className="text-[11px] px-2 py-1 rounded bg-emerald-700/80 text-white hover:bg-emerald-600 disabled:opacity-40"
+                            title="Run QA, commit, and open a PR for this finished task"
+                          >
+                            Send to QA
+                          </button>
+                        )}
+
                         {t.status !== "running" && (
                           <button
                             disabled={isLocked || isRunningTaskId === t.id}
@@ -801,6 +925,15 @@ export function ProjectDashboard({
                           </button>
                         )}
                       </div>
+                    </div>
+                    {isSelected && (
+                      <TaskDetail
+                        task={t}
+                        executions={taskExecutions}
+                        timeline={autopilotTimeline.filter((e) => e.taskId === t.id)}
+                        logs={terminalLogs}
+                      />
+                    )}
                     </div>
                   );
                 })

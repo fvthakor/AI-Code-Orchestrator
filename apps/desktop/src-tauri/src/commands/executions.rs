@@ -110,7 +110,14 @@ pub async fn execution_run_agent(
         }
     }
 
-    let exec_cmd = adapter.build_execution_command(&agent_task, project_dir, cli_path)?;
+    // Long, multi-line prompts break on the command line (length limits, cmd.exe quoting).
+    // The full task goes into a file, and the agent gets a short pointer to it.
+    let agent_task = write_task_file(&agent_task, project_dir)?;
+    let mut exec_cmd = adapter.build_execution_command(&agent_task, project_dir, cli_path)?;
+    // Newlines and double quotes in an argument break the prompt once cmd.exe launches a .cmd shim
+    for arg in exec_cmd.args.iter_mut() {
+        *arg = sanitize_arg(arg);
+    }
 
     // Create execution record in DB
     let full_command = format!("{} {}", exec_cmd.program.display(), exec_cmd.args.join(" "));
@@ -162,6 +169,8 @@ pub async fn execution_run_agent(
         },
     )?;
 
+    process_mgr.link_execution(&exec_id, &session_id);
+
     // Spawn monitoring thread to finalize execution when process finishes
     let pm_clone = (*process_mgr).clone();
     let pm_clone_release = (*process_mgr).clone();
@@ -170,6 +179,15 @@ pub async fn execution_run_agent(
     std::thread::spawn(move || {
         while pm_clone.is_session_running(&session_id_clone) {
             std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+
+        // The output stream can close before the exit code is recorded. Wait briefly for the code,
+        // so a finished agent is not recorded as failed with exit code -1.
+        let code_deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while pm_clone.session_exit_code(&session_id_clone).is_none()
+            && std::time::Instant::now() < code_deadline
+        {
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
 
         // Release single-task sequential lock
@@ -202,17 +220,37 @@ pub async fn execution_run_agent(
             (None, None)
         };
 
+        // A pause or stop already set "interrupted" and reset the task; keep that status
+        let already_interrupted = db_clone
+            .get_execution_by_id(&exec_id_clone)
+            .ok()
+            .flatten()
+            .map_or(false, |e| e.status == "interrupted");
+        if already_interrupted {
+            return;
+        }
+
+        // Real exit code: a non-zero exit is a failed run, not a completed one
+        let exit_code = pm_clone_release
+            .session_exit_code(&session_id_clone)
+            .map(|c| c as i32)
+            .unwrap_or(-1);
+        let status = if exit_code == 0 { "completed" } else { "failed" };
+
         let completed_str = Utc::now().to_rfc3339();
         let _ = db_clone.update_execution_status(
             &exec_id_clone,
-            "completed",
-            Some(0),
+            status,
+            Some(exit_code),
             Some(duration_ms),
             files_changed_json.as_deref(),
             git_diff.as_deref(),
         );
 
-        let _ = db_clone.update_task_status(&task_id_clone, "completed", None, Some(&completed_str));
+        // A finished agent run is not a finished task: it still needs QA, commit, and merge.
+        // Only the autopilot marks a task completed, after those steps pass.
+        let task_status = if exit_code == 0 { "awaiting_qa" } else { "failed" };
+        let _ = db_clone.update_task_status(&task_id_clone, task_status, None, Some(&completed_str));
     });
 
     Ok(exec_id)
@@ -309,6 +347,121 @@ pub async fn execution_clear_active_lock(
 ) -> Result<(), String> {
     process_mgr.set_active_agent_task(None);
     Ok(())
+}
+
+/// Collapses newlines and swaps double quotes, so the prompt survives cmd.exe. Other arguments are untouched.
+fn sanitize_arg(arg: &str) -> String {
+    if !arg.contains(['\n', '\r', '"']) {
+        return arg.to_string();
+    }
+    arg.split_whitespace().collect::<Vec<_>>().join(" ").replace('"', "'")
+}
+
+/// Writes the full task to `.orchestrator/task.md` in the project and returns a task whose
+/// description is only a pointer to that file. The folder is excluded from git locally, so it is never committed.
+fn write_task_file(task: &AgentTask, project_dir: &Path) -> Result<AgentTask, String> {
+    let dir = project_dir.join(".orchestrator");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("could not create .orchestrator folder: {}", e))?;
+
+    let content = format!(
+        "# {}\n\n{}\n\n## Environment notes\n- ripgrep (rg) may not be installed. Search with `Select-String` (PowerShell) or `findstr` instead.\n- Stop every server or dev process you start before you finish. Never leave a port open.\n",
+        task.title, task.description
+    );
+    std::fs::write(dir.join("task.md"), content)
+        .map_err(|e| format!("could not write .orchestrator/task.md: {}", e))?;
+
+    // Keep the task file out of commits: add it to the local exclude list, not .gitignore
+    let exclude = project_dir.join(".git").join("info").join("exclude");
+    if exclude.exists() {
+        let current = std::fs::read_to_string(&exclude).unwrap_or_default();
+        if !current.lines().any(|l| l.trim() == ".orchestrator/") {
+            let mut updated = current;
+            updated.push_str("\n.orchestrator/\n");
+            let _ = std::fs::write(&exclude, updated);
+        }
+    }
+
+    Ok(AgentTask {
+        id: task.id.clone(),
+        title: task.title.clone(),
+        description: format!(
+            "Read the file .orchestrator/task.md in the project root. It holds the full task, acceptance criteria, and delivery contract. Do everything it asks, and stop when finished."
+        ),
+    })
+}
+
+/// Pause or stop: kills the agent process tree. The task goes back to pending so a restart redoes it.
+#[tauri::command]
+pub async fn execution_stop(
+    execution_id: String,
+    db: State<'_, DbManager>,
+    process_mgr: State<'_, ProcessManager>,
+) -> Result<(), String> {
+    let session_id = process_mgr
+        .session_for_execution(&execution_id)
+        .ok_or_else(|| format!("No session for execution '{}'", execution_id))?;
+
+    // Mark first, so the monitor thread does not overwrite this with "failed"
+    let execution = db.get_execution_by_id(&execution_id).map_err(|e| e.to_string())?;
+    db.update_execution_status(&execution_id, "interrupted", None, None, None, None)
+        .map_err(|e| e.to_string())?;
+    if let Some(task_id) = execution.and_then(|e| e.task_id) {
+        db.update_task_status(&task_id, "pending", None, None)
+            .map_err(|e| e.to_string())?;
+    }
+
+    process_mgr.kill_session(&session_id)?;
+    process_mgr.set_active_agent_task(None);
+    Ok(())
+}
+
+/// A "running" run older than this, with no live process, is stale. The margin lets a run finish
+/// normally first (its monitor needs a few seconds), so the checker never overwrites a real result.
+const STALE_AFTER_SECS: i64 = 120;
+
+/// Marks runs stuck in "running" with no live process as interrupted, and returns their tasks to pending.
+/// Returns how many runs were fixed.
+pub fn reconcile_stale_runs(db: &DbManager, process_mgr: &ProcessManager) -> usize {
+    let Ok(runs) = db.list_all_executions(500) else {
+        return 0;
+    };
+    let now = Utc::now();
+    let mut fixed = 0;
+    for run in runs.into_iter().filter(|r| r.status == "running") {
+        let started = chrono::DateTime::parse_from_rfc3339(&run.started_at)
+            .map(|t| t.with_timezone(&Utc))
+            .unwrap_or(now);
+        if (now - started).num_seconds() < STALE_AFTER_SECS {
+            continue;
+        }
+        if process_mgr.execution_running(&run.id) {
+            continue;
+        }
+        let _ = db.update_execution_status(&run.id, "interrupted", None, None, None, None);
+        if let Some(task_id) = &run.task_id {
+            let _ = db.update_task_status(task_id, "pending", None, None);
+        }
+        eprintln!("Stale run {} had no live process; marked interrupted", run.id);
+        fixed += 1;
+    }
+    fixed
+}
+
+/// Runs the stale-run check every 30 seconds for as long as the app is open.
+pub fn start_stale_run_checker(db: DbManager, process_mgr: ProcessManager) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(30));
+        reconcile_stale_runs(&db, &process_mgr);
+    });
+}
+
+/// True only while the execution's process is alive. The UI uses this instead of the lock alone.
+#[tauri::command]
+pub async fn execution_is_running(
+    execution_id: String,
+    process_mgr: State<'_, ProcessManager>,
+) -> Result<bool, String> {
+    Ok(process_mgr.execution_running(&execution_id))
 }
 
 #[tauri::command]
