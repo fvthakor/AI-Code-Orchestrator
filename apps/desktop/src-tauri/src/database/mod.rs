@@ -297,6 +297,20 @@ impl DbManager {
         Ok(())
     }
 
+    /// Called at app start. No agent process survives an app restart, so any run still marked
+    /// running is stale: mark it interrupted and put its task back to pending. Returns how many runs were fixed.
+    pub fn recover_interrupted_runs(&self) -> Result<usize> {
+        let conn = self.conn.lock().unwrap();
+        let now = Utc::now().to_rfc3339();
+
+        let runs = conn.execute(
+            "UPDATE executions SET status = 'interrupted', completed_at = ?1 WHERE status = 'running'",
+            params![now],
+        )?;
+        conn.execute("UPDATE tasks SET status = 'pending' WHERE status = 'running'", [])?;
+        Ok(runs)
+    }
+
     pub fn get_execution_by_id(&self, id: &str) -> Result<Option<Execution>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(

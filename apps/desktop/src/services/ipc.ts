@@ -25,6 +25,27 @@ export interface GitCommitInfo {
   message: string;
 }
 
+export interface QaStaticCheck {
+  name: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface QaStaticReport {
+  passed: boolean;
+  checks: QaStaticCheck[];
+}
+
+export interface QaGapReport {
+  gaps: string[];
+  envVars: string[];
+  ports: string[];
+  hasPackageJson: boolean;
+  hasStartScript: boolean;
+  hasE2eScript: boolean;
+  hasRunSection: boolean;
+}
+
 export const IpcService = {
   // Dialog
   async selectDirectory(): Promise<string | null> {
@@ -213,6 +234,50 @@ export const IpcService = {
     message: string
   ): Promise<string> {
     return await invoke<string>("git_commit_and_push", { projectId, branchName, message });
+  },
+
+  async qaStaticChecks(projectId: string): Promise<QaStaticReport> {
+    return await invoke<QaStaticReport>("qa_static_checks", { projectId });
+  },
+
+  async qaGapReport(projectId: string): Promise<QaGapReport> {
+    return await invoke<QaGapReport>("qa_gap_report", { projectId });
+  },
+
+  async environmentCheck(): Promise<{ name: string; ok: boolean; detail: string }[]> {
+    return await invoke<{ name: string; ok: boolean; detail: string }[]>("environment_check");
+  },
+
+  async environmentInstall(tool: string): Promise<string> {
+    return await invoke<string>("environment_install", { tool });
+  },
+
+  async executionStop(executionId: string): Promise<void> {
+    return await invoke<void>("execution_stop", { executionId });
+  },
+
+  async executionIsRunning(executionId: string): Promise<boolean> {
+    return await invoke<boolean>("execution_is_running", { executionId });
+  },
+
+  async powerKeepAwake(enabled: boolean): Promise<void> {
+    return await invoke<void>("power_keep_awake", { enabled });
+  },
+
+  async autopilotSaveState(projectId: string, stateJson: string): Promise<void> {
+    return await invoke<void>("autopilot_save_state", { projectId, stateJson });
+  },
+
+  async autopilotLoadState(projectId: string): Promise<string | null> {
+    return await invoke<string | null>("autopilot_load_state", { projectId });
+  },
+
+  async gitBootstrapRepo(projectId: string): Promise<{ baseBranch: string; hasRemote: boolean; createdInitialCommit: boolean }> {
+    return await invoke<{ baseBranch: string; hasRemote: boolean; createdInitialCommit: boolean }>("git_bootstrap_repo", { projectId });
+  },
+
+  async gitResumeTaskBranch(projectId: string, branchName: string): Promise<string> {
+    return await invoke<string>("git_resume_task_branch", { projectId, branchName });
   },
 
   async gitPush(projectId: string, branchName: string): Promise<string> {

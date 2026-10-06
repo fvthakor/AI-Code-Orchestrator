@@ -120,6 +120,15 @@ impl GitHubService {
         Ok(branch_name)
     }
 
+    /// Switches to an existing task branch without pulling or resetting, so uncommitted work from an interrupted run survives.
+    pub fn resume_task_branch(repo_dir: &Path, branch_name: &str) -> Result<String, String> {
+        if !repo_dir.join(".git").exists() {
+            return Ok(String::new());
+        }
+        Self::run_git_cmd(repo_dir, &["checkout", branch_name])?;
+        Ok(branch_name.to_string())
+    }
+
     /// Stages all changes, commits, and pushes branch to origin.
     pub fn commit_and_push(
         repo_dir: &Path,
@@ -133,21 +142,27 @@ impl GitHubService {
         // git add -A
         Self::run_git_cmd(repo_dir, &["add", "-A"])?;
 
-        // check status
+        // check status: an empty diff means the developer produced no work, which must fail the task
         let status = Self::run_git_cmd(repo_dir, &["status", "--porcelain"])?;
         if status.trim().is_empty() {
-            return Ok("No changes to commit".to_string());
+            return Err(format!(
+                "No changes to commit on branch '{}': the developer produced no file changes",
+                branch_name
+            ));
         }
 
         // git commit -m <msg>
         Self::run_git_cmd(repo_dir, &["commit", "-m", commit_message])?;
 
-        // git push -u origin <branch> (ignore failure if offline or no remote)
-        let push_res = Self::push_branch(repo_dir, branch_name);
-        match push_res {
-            Ok(msg) => Ok(format!("Committed and pushed to origin/{}: {}", branch_name, msg)),
-            Err(err) => Ok(format!("Committed locally (push skipped: {})", err)),
+        // Local-only repos have no origin: the commit is the deliverable
+        if Self::get_remote_url(repo_dir).is_err() {
+            return Ok(format!("Committed locally on '{}' (no remote configured)", branch_name));
         }
+
+        // git push -u origin <branch>: a failed push must fail the task, not pass silently
+        let msg = Self::push_branch(repo_dir, branch_name)
+            .map_err(|err| format!("Push of '{}' to origin failed: {}", branch_name, err))?;
+        Ok(format!("Committed and pushed to origin/{}: {}", branch_name, msg))
     }
 
     /// Parses owner and repository name from GitHub URLs (HTTPS or SSH).
@@ -336,6 +351,18 @@ impl GitHubService {
             return Ok(true);
         }
 
+        // A branch that never got a commit still points at the base tip. It has nothing to merge,
+        // so it must not count as merged (this is how an empty task branch used to pass the gate).
+        // Autopilot merges with --no-ff, so a genuinely merged branch tip is never the base tip.
+        if let (Ok(branch_tip), Ok(base_tip)) = (
+            Self::run_git_cmd(repo_dir, &["rev-parse", branch_name]),
+            Self::run_git_cmd(repo_dir, &["rev-parse", &base]),
+        ) {
+            if branch_tip.trim() == base_tip.trim() {
+                return Ok(false);
+            }
+        }
+
         let has_remote = Self::get_remote_url(repo_dir).is_ok();
 
         if has_remote {
@@ -401,6 +428,178 @@ impl GitHubService {
         Self::run_git_cmd(repo_dir, &["merge", branch_name, "--no-ff", "-m", &format!("Merge branch '{}' into {}", branch_name, base)])?;
         let _ = Self::run_git_cmd(repo_dir, &["push", "origin", base]);
         Ok(format!("Successfully merged '{}' into '{}'", branch_name, base))
+    }
+}
+
+/// What the repo looks like after the bootstrap, for the autopilot to plan its branches around.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepoBootstrap {
+    pub base_branch: String,
+    pub has_remote: bool,
+    pub created_initial_commit: bool,
+}
+
+impl GitHubService {
+    /// Makes a project ready for the autopilot, on the repo's own default branch (main, master, or any name).
+    /// Steps: git init if needed; first commit if none; fetch the remote; fast-forward the base to the remote;
+    /// merge diverged history into the base (local files win on conflicts); push the base.
+    /// Uncommitted work on a task branch is stashed around the sync and restored afterwards.
+    pub fn bootstrap_repo(repo_dir: &Path) -> Result<RepoBootstrap, String> {
+        if !repo_dir.is_dir() {
+            return Err("project folder does not exist".into());
+        }
+
+        if !repo_dir.join(".git").exists() {
+            Self::run_git_cmd(repo_dir, &["init", "-b", "master"])?;
+        }
+
+        let mut created_initial_commit = false;
+        let has_commits = Self::run_git_cmd(repo_dir, &["rev-parse", "--verify", "HEAD"]).is_ok();
+        if !has_commits {
+            // Keep local secrets out of the first commit
+            if repo_dir.join(".env").exists() && Self::run_git_cmd(repo_dir, &["check-ignore", ".env"]).is_err() {
+                use std::io::Write;
+                let mut gitignore = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(repo_dir.join(".gitignore"))
+                    .map_err(|e| format!("could not update .gitignore: {}", e))?;
+                writeln!(gitignore, ".env").map_err(|e| e.to_string())?;
+            }
+            Self::run_git_cmd(repo_dir, &["symbolic-ref", "HEAD", "refs/heads/master"])?;
+            Self::run_git_cmd(repo_dir, &["add", "-A"])?;
+            Self::run_git_cmd(repo_dir, &["commit", "--allow-empty", "-m", "chore: initial commit"])?;
+            created_initial_commit = true;
+        }
+
+        let has_remote = Self::get_remote_url(repo_dir).is_ok();
+        let base = Self::default_base_branch(repo_dir, has_remote);
+
+        if !has_remote {
+            // Local only: the base just has to exist. Tasks check it out themselves.
+            if !Self::branch_exists(repo_dir, &base) {
+                Self::run_git_cmd(repo_dir, &["branch", base.as_str()])?;
+            }
+            return Ok(RepoBootstrap {
+                base_branch: base,
+                has_remote,
+                created_initial_commit,
+            });
+        }
+
+        Self::run_git_cmd(repo_dir, &["fetch", "origin"])
+            .map_err(|e| format!("could not reach origin to sync '{}': {}", base, e))?;
+        let remote_ref = format!("origin/{}", base);
+        let remote_exists = Self::run_git_cmd(
+            repo_dir,
+            &["rev-parse", "--verify", "--quiet", format!("refs/remotes/{}", remote_ref).as_str()],
+        )
+        .is_ok();
+
+        // Move onto the base, carrying any uncommitted work aside so nothing is lost
+        let previous = Self::run_git_cmd(repo_dir, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        let switched = previous != base;
+        let dirty = !Self::run_git_cmd(repo_dir, &["status", "--porcelain"])?.is_empty();
+
+        if switched {
+            if dirty {
+                Self::run_git_cmd(repo_dir, &["stash", "push", "-u", "-m", "orchestrator-bootstrap"])?;
+            }
+            if Self::branch_exists(repo_dir, &base) {
+                Self::run_git_cmd(repo_dir, &["checkout", base.as_str()])?;
+            } else {
+                let start = if remote_exists { remote_ref.clone() } else { "HEAD".to_string() };
+                Self::run_git_cmd(repo_dir, &["checkout", "-B", base.as_str(), start.as_str()])?;
+            }
+        }
+
+        let sync = Self::sync_base(repo_dir, &base, remote_exists);
+
+        // Always return to the task branch and restore its work, even if the sync failed
+        if switched {
+            let back = Self::run_git_cmd(repo_dir, &["checkout", previous.as_str()]);
+            if dirty && back.is_ok() {
+                if let Err(e) = Self::run_git_cmd(repo_dir, &["stash", "pop"]) {
+                    return Err(format!(
+                        "your uncommitted work is safe in the stash, but it did not restore cleanly: {}",
+                        e
+                    ));
+                }
+            }
+            back?;
+        }
+        sync?;
+
+        Ok(RepoBootstrap {
+            base_branch: base,
+            has_remote,
+            created_initial_commit,
+        })
+    }
+
+    /// Brings the base branch up to the remote and publishes it. The base must be checked out already.
+    fn sync_base(repo_dir: &Path, base: &str, remote_exists: bool) -> Result<(), String> {
+        if remote_exists {
+            let remote_ref = format!("origin/{}", base);
+            let local_is_behind = Self::is_ancestor(repo_dir, "HEAD", &remote_ref);
+            let local_is_ahead = Self::is_ancestor(repo_dir, &remote_ref, "HEAD");
+
+            if local_is_behind && !local_is_ahead {
+                // Only behind: a clean fast-forward, nothing to merge
+                Self::run_git_cmd(repo_dir, &["merge", "--ff-only", remote_ref.as_str()])
+                    .map_err(|e| format!("could not fast-forward '{}' to origin: {}", base, e))?;
+            } else if !local_is_ahead {
+                // Diverged: join the histories. Local files win on conflicts, remote-only files are kept.
+                let related = Self::run_git_cmd(repo_dir, &["merge-base", "HEAD", remote_ref.as_str()]).is_ok();
+                let mut args = vec!["merge", "--no-edit", "-X", "ours"];
+                if !related {
+                    args.push("--allow-unrelated-histories");
+                }
+                args.push(remote_ref.as_str());
+                if Self::run_git_cmd(repo_dir, &args).is_err() {
+                    let _ = Self::run_git_cmd(repo_dir, &["merge", "--abort"]);
+                    return Err(format!(
+                        "could not join the remote '{}' history with the local one automatically. Nothing was pushed.",
+                        base
+                    ));
+                }
+            }
+        }
+
+        // Publish the base. A rejection here is a real problem to report, not a silent skip.
+        Self::run_git_cmd(repo_dir, &["push", "-u", "origin", base])
+            .map(|_| ())
+            .map_err(|e| format!("push of '{}' to origin failed: {}", base, e))
+    }
+
+    /// The base branch: the remote's own default when there is a remote, otherwise a local main or master.
+    fn default_base_branch(repo_dir: &Path, has_remote: bool) -> String {
+        if has_remote {
+            if let Ok(out) = Self::run_git_cmd(repo_dir, &["ls-remote", "--symref", "origin", "HEAD"]) {
+                for line in out.lines() {
+                    if let Some(rest) = line.strip_prefix("ref: refs/heads/") {
+                        if let Some(name) = rest.split_whitespace().next() {
+                            return name.to_string();
+                        }
+                    }
+                }
+            }
+        }
+        if Self::branch_exists(repo_dir, "master") || !Self::branch_exists(repo_dir, "main") {
+            "master".to_string()
+        } else {
+            "main".to_string()
+        }
+    }
+
+    fn branch_exists(repo_dir: &Path, name: &str) -> bool {
+        Self::run_git_cmd(repo_dir, &["rev-parse", "--verify", "--quiet", format!("refs/heads/{}", name).as_str()])
+            .is_ok()
+    }
+
+    fn is_ancestor(repo_dir: &Path, ancestor: &str, descendant: &str) -> bool {
+        Self::run_git_cmd(repo_dir, &["merge-base", "--is-ancestor", ancestor, descendant]).is_ok()
     }
 }
 

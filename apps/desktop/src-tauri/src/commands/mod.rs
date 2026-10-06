@@ -6,3 +6,7 @@ pub mod terminal;
 pub mod git;
 pub mod security;
 pub mod team;
+pub mod qa;
+pub mod power;
+pub mod autopilot;
+pub mod environment;
